@@ -1,0 +1,325 @@
+import type { ReactNode } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type TextInputProps,
+  type ViewProps,
+} from 'react-native';
+
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { theme } from '../constants/autocares-theme';
+
+export function Screen({ children, style, ...rest }: ViewProps) {
+  const insets = useSafeAreaInsets();
+  const topPadding = Math.max(insets.top, 20) + 8;
+  return (
+    <View style={[styles.screen, { paddingTop: topPadding }, style]} {...rest}>
+      {children}
+    </View>
+  );
+}
+
+export function Title({ children }: { children: ReactNode }) {
+  return <Text style={styles.title}>{children}</Text>;
+}
+
+export function Subtitle({ children }: { children: ReactNode }) {
+  return <Text style={styles.subtitle}>{children}</Text>;
+}
+
+export function Card({ children, style, ...rest }: ViewProps) {
+  return (
+    <View style={[styles.card, style]} {...rest}>
+      {children}
+    </View>
+  );
+}
+
+export function Label({ children }: { children: string }) {
+  return <Text style={styles.label}>{children}</Text>;
+}
+
+export function Field(props: TextInputProps) {
+  return (
+    <TextInput
+      placeholderTextColor={theme.colors.muted}
+      style={[styles.input, props.style]}
+      {...props}
+    />
+  );
+}
+
+export type ButtonVariant = 'primary' | 'yellow' | 'accent' | 'orange' | 'cta' | 'danger';
+
+export function PrimaryButton({
+  label,
+  onPress,
+  disabled,
+  danger,
+  variant = 'primary',
+  children,
+}: {
+  label?: string;
+  onPress: () => void;
+  disabled?: boolean;
+  danger?: boolean;
+  variant?: ButtonVariant;
+  children?: ReactNode;
+}) {
+  const isDanger = danger || variant === 'danger';
+  const isYellow = variant === 'yellow' || variant === 'accent';
+  const isOrange = variant === 'orange' || variant === 'cta';
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.button,
+        isDanger && styles.dangerButton,
+        isYellow && styles.yellowButton,
+        isOrange && styles.orangeButton,
+        disabled && styles.disabled,
+        pressed && styles.pressed,
+      ]}>
+      {children ? (
+        children
+      ) : (
+        <Text
+          style={[
+            styles.buttonText,
+            isDanger && styles.dangerText,
+            isYellow && styles.yellowText,
+            isOrange && styles.orangeText,
+          ]}>
+          {label}
+        </Text>
+      )}
+    </Pressable>
+  );
+}
+
+export function OutlineButton({
+  label,
+  onPress,
+  disabled,
+  children,
+}: {
+  label?: string;
+  onPress: () => void;
+  disabled?: boolean;
+  children?: ReactNode;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.outlineButton,
+        disabled && styles.disabled,
+        pressed && styles.pressed,
+      ]}>
+      {children ? children : <Text style={styles.outlineText}>{label}</Text>}
+    </Pressable>
+  );
+}
+
+export function Badge({
+  label,
+  variant = 'blue',
+}: {
+  label: string;
+  variant?: 'blue' | 'yellow' | 'orange' | 'green' | 'muted';
+}) {
+  const badgeStyles = {
+    blue: { bg: theme.colors.primaryLight, text: theme.colors.primaryDark, border: '#BAE6FD' },
+    yellow: { bg: theme.colors.yellowLight, text: '#854D0E', border: '#FDE047' },
+    orange: { bg: theme.colors.orangeLight, text: '#C2410C', border: '#FED7AA' },
+    green: { bg: theme.colors.successLight, text: '#15803D', border: '#BBF7D0' },
+    muted: { bg: theme.colors.surfaceSubtle, text: theme.colors.muted, border: theme.colors.border },
+  }[variant];
+
+  return (
+    <View style={[styles.badge, { backgroundColor: badgeStyles.bg, borderColor: badgeStyles.border }]}>
+      <Text style={[styles.badgeText, { color: badgeStyles.text }]}>{label}</Text>
+    </View>
+  );
+}
+
+export function LoadingState({ label = 'Loading…' }: { label?: string }) {
+  return (
+    <View style={styles.center}>
+      <ActivityIndicator size="small" color={theme.colors.primary} />
+      <Text style={styles.muted}>{label}</Text>
+    </View>
+  );
+}
+
+export function EmptyState({ message }: { message: string }) {
+  return (
+    <View style={styles.center}>
+      <Text style={styles.muted}>{message}</Text>
+    </View>
+  );
+}
+
+export function ErrorText({ message }: { message: string | null }) {
+  if (!message) return null;
+  return <Text style={styles.error}>{message}</Text>;
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    padding: 16,
+  },
+  title: {
+    color: theme.colors.text,
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    marginBottom: 6,
+  },
+  subtitle: {
+    color: theme.colors.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  card: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.medium,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  label: {
+    color: theme.colors.text,
+    fontWeight: '700',
+    fontSize: 13,
+    marginBottom: 6,
+  },
+  input: {
+    height: 50,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    marginBottom: 14,
+    color: theme.colors.text,
+    fontSize: 15,
+  },
+  button: {
+    backgroundColor: theme.colors.primary, // Sky Blue #38B8E8
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  yellowButton: {
+    backgroundColor: theme.colors.yellow, // Yellow #FFD52A
+    shadowColor: theme.colors.yellow,
+  },
+  orangeButton: {
+    backgroundColor: theme.colors.orange, // Orange #FF9800
+    shadowColor: theme.colors.orange,
+  },
+  dangerButton: {
+    backgroundColor: theme.colors.dangerLight,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  buttonText: {
+    color: '#FFFFFF', // Clean readable white on Sky Blue
+    fontWeight: '800',
+    fontSize: 15,
+    letterSpacing: 0.2,
+  },
+  yellowText: {
+    color: theme.colors.text, // Slate text for optimal contrast on yellow
+    fontWeight: '800',
+  },
+  orangeText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  dangerText: {
+    color: theme.colors.danger,
+    fontWeight: '800',
+  },
+  outlineButton: {
+    borderWidth: 1.5,
+    borderColor: theme.colors.primary,
+    borderRadius: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    backgroundColor: theme.colors.surface,
+  },
+  outlineText: {
+    color: theme.colors.primary,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  badge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  disabled: {
+    opacity: 0.55,
+  },
+  pressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.99 }],
+  },
+  center: {
+    paddingVertical: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  muted: {
+    color: theme.colors.muted,
+    textAlign: 'center',
+    fontSize: 14,
+  },
+  error: {
+    color: theme.colors.danger,
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+});

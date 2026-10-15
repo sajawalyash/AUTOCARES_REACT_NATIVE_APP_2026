@@ -8,15 +8,29 @@
     "scheme": "autocaresmobile",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "AutoCares uses your location to find nearby mechanics and share your roadside position.",
+        "NSBluetoothAlwaysUsageDescription": "AutoCares uses Bluetooth to find and connect to your BLE OBD-II adapter."
+      }
     },
     "android": {
+      "package": "com.autocares.mobile",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAIi95dchgUrtLmuMCsElW1drwlTIcRGWU"
+        }
+      },
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -31,6 +45,19 @@
           "backgroundColor": "#208AEF",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow AutoCares to use your location to find nearby mechanics and share roadside assistance coordinates."
+        }
+      ],
+      [
+        "react-native-ble-plx",
+        {
+          "neverForLocation": true,
+          "bluetoothAlwaysPermission": "AutoCares uses Bluetooth to find and connect to your BLE OBD-II adapter."
         }
       ]
     ],
