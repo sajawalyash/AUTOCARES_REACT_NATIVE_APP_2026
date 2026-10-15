@@ -14,6 +14,11 @@
         "NSBluetoothAlwaysUsageDescription": "AutoCares uses Bluetooth to find and connect to your BLE OBD-II adapter."
       }
     },
+
+    "web": {
+  "bundler": "metro",
+  "output": "single"
+},
     "android": {
       "package": "com.autocares.mobile",
       "config": {
@@ -33,10 +38,7 @@
       ],
       "predictiveBackGestureEnabled": false
     },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
-    },
+  
     "plugins": [
       "expo-router",
       [
@@ -65,5 +67,9 @@
       "typedRoutes": true,
       "reactCompiler": true
     }
+
+    
   }
+  
 }
+
