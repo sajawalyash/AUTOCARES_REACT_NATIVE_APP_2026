@@ -35,12 +35,12 @@ import {
 } from '../../../lib/types';
 
 const vehicleTypes: VehicleType[] = ['Car', 'Bike', 'Scooter', 'Van'];
-const fuelTypes = ['petrol', 'diesel', 'hybrid', 'electric', 'other'] as const;
+type FuelType = 'petrol' | 'diesel' | 'hybrid' | 'electric' | 'other';
 const quickSymptoms = [
-  'My vehicle will not start',
-  'The engine is overheating',
-  'I hear an unusual noise',
-  'A warning light is on',
+  'Vehicle will not start',
+  'Engine is overheating',
+  'Unusual grinding noise',
+  'Check Engine light is on',
 ];
 
 export default function AiHelpScreen() {
@@ -57,7 +57,7 @@ function AiHelpSession({ diagnosticData }: { diagnosticData?: string }) {
   const [make, setMake] = useState('');
   const [model, setModel] = useState('');
   const [year, setYear] = useState('');
-  const [fuelType, setFuelType] = useState<(typeof fuelTypes)[number] | null>(null);
+  const [fuelType] = useState<FuelType | null>(null);
   const [problemType, setProblemType] = useState<ProblemType>('other');
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [diagnostics, setDiagnostics] = useState<ObdContext | null>(() =>
@@ -167,17 +167,20 @@ function AiHelpSession({ diagnosticData }: { diagnosticData?: string }) {
         showsVerticalScrollIndicator={false}>
         <Title>AI Vehicle Assistant</Title>
         <Subtitle>
-          Focused troubleshooting for your vehicle. Guidance is informational, not a confirmed diagnosis.
+          Fast vehicle troubleshooting and safe next steps. Informational guidance only.
         </Subtitle>
 
+        {/* Safety Banner (Orange Accent) */}
         <Card style={styles.safetyBanner}>
+          <Text style={styles.safetyTitle}>⚠️ Roadside Safety Advisory</Text>
           <Text style={styles.safety}>
-            If the brakes or steering fail, fuel leaks, smoke, a burning smell, or severe overheating occur,
-            stop safely and do not continue driving.
+            If steering or brakes fail, fuel leaks, or severe overheating occurs, pull over safely to
+            the roadside and request an on-site mechanic immediately.
           </Text>
         </Card>
 
-        <Label>Vehicle type</Label>
+        {/* Vehicle Selection Chips */}
+        <Label>Vehicle Type</Label>
         <View style={styles.chips}>
           {vehicleTypes.map((type) => (
             <Pressable
@@ -186,45 +189,32 @@ function AiHelpSession({ diagnosticData }: { diagnosticData?: string }) {
               accessibilityState={{ selected: vehicleType === type }}
               style={[styles.chip, vehicleType === type && styles.chipSelected]}
               onPress={() => setVehicleType(type)}>
-              <Text style={styles.chipText}>{type}</Text>
-            </Pressable>
-          ))}
-        </View>
-        <View style={styles.row}>
-          <Field value={make} onChangeText={setMake} placeholder="Make (optional)" style={styles.halfField} />
-          <Field value={model} onChangeText={setModel} placeholder="Model (optional)" style={styles.halfField} />
-        </View>
-        <Field
-          value={year}
-          onChangeText={(value) => setYear(value.replace(/\D/g, '').slice(0, 4))}
-          placeholder="Year (optional)"
-          keyboardType="number-pad"
-          maxLength={4}
-        />
-        <Label>Fuel type (optional)</Label>
-        <View style={styles.chips}>
-          {fuelTypes.map((type) => (
-            <Pressable
-              key={type}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: fuelType === type }}
-              style={[styles.chip, fuelType === type && styles.chipSelected]}
-              onPress={() => setFuelType((current) => current === type ? null : type)}>
-              <Text style={styles.chipText}>{type[0].toUpperCase() + type.slice(1)}</Text>
+              <Text style={[styles.chipText, vehicleType === type && styles.chipTextSelected]}>
+                {type}
+              </Text>
             </Pressable>
           ))}
         </View>
 
-        <Label>Service category</Label>
+        <View style={styles.row}>
+          <Field value={make} onChangeText={setMake} placeholder="Make" style={styles.halfField} />
+          <Field value={model} onChangeText={setModel} placeholder="Model" style={styles.halfField} />
+          <Field value={year} onChangeText={setYear} placeholder="Year" keyboardType="number-pad" style={{ width: 75 }} />
+        </View>
+
+        {/* Category Chips */}
+        <Label>Service Category</Label>
         <View style={styles.chips}>
-          {activeCategories.map((category) => (
+          {activeCategories.slice(0, 6).map((category) => (
             <Pressable
               key={category.id}
               accessibilityRole="radio"
               accessibilityState={{ selected: problemType === category.id }}
               style={[styles.chip, problemType === category.id && styles.chipSelected]}
               onPress={() => setProblemType(category.id)}>
-              <Text style={styles.chipText}>{category.label}</Text>
+              <Text style={[styles.chipText, problemType === category.id && styles.chipTextSelected]}>
+                {category.label}
+              </Text>
             </Pressable>
           ))}
         </View>
@@ -234,23 +224,28 @@ function AiHelpSession({ diagnosticData }: { diagnosticData?: string }) {
             accessibilityRole="button"
             style={styles.outlineAction}
             onPress={() => router.push('/(customer)/obd-ii')}>
-            <Text style={styles.actionText}>OBD-II Diagnostics</Text>
+            <Text style={styles.actionText}>Connect OBD-II</Text>
           </Pressable>
           <Pressable accessibilityRole="button" style={styles.outlineAction} onPress={startNewDiagnosis}>
-            <Text style={styles.actionText}>New diagnosis</Text>
+            <Text style={styles.actionText}>Reset Session</Text>
           </Pressable>
         </View>
+
         {diagnostics && (
-          <Text style={styles.diagnosticLabel}>
-            Connected-adapter data attached · captured {new Date(diagnostics.captured_at).toLocaleTimeString()}
-          </Text>
+          <View style={styles.diagnosticBadge}>
+            <Text style={styles.diagnosticText}>
+              ✓ Attached OBD-II parameters ({new Date(diagnostics.captured_at).toLocaleTimeString()})
+            </Text>
+          </View>
         )}
 
+        {/* Chat History */}
         <View style={styles.chat}>
           {messages.length === 0 && (
             <View style={[styles.message, styles.assistantMessage]}>
               <Text style={styles.messageText}>
-                Tell me what happened, and I will help you with safe, step-by-step vehicle troubleshooting.
+                Describe what your vehicle is experiencing (e.g., odd noises, smoke, battery clicks),
+                and I will walk you through safe troubleshooting steps.
               </Text>
             </View>
           )}
@@ -272,14 +267,14 @@ function AiHelpSession({ diagnosticData }: { diagnosticData?: string }) {
           ))}
           {loading && (
             <View style={[styles.message, styles.assistantMessage]}>
-              <Text style={styles.messageText}>Checking safe troubleshooting steps…</Text>
+              <Text style={styles.messageText}>Analyzing symptoms safely…</Text>
             </View>
           )}
         </View>
 
         {messages.length === 0 && (
           <>
-            <Label>Common problems</Label>
+            <Label>Common Symptoms</Label>
             <View style={styles.chips}>
               {quickSymptoms.map((symptom) => (
                 <Pressable
@@ -298,18 +293,20 @@ function AiHelpSession({ diagnosticData }: { diagnosticData?: string }) {
         <Field
           value={draft}
           onChangeText={setDraft}
-          placeholder="Describe what happened or answer the question"
+          placeholder="Describe what happened or reply..."
           multiline
           maxLength={1500}
           style={styles.messageInput}
           editable={!loading && !retryText}
           accessibilityLabel="Describe the vehicle problem"
         />
+
         <PrimaryButton
-          label={loading ? 'Thinking…' : 'Send'}
+          label={loading ? 'Analyzing…' : 'Send to Assistant'}
           onPress={() => void sendMessage(draft)}
           disabled={loading || !!retryText || !draft.trim()}
         />
+
         {retryText && !!error && (
           <OutlineButton
             label="Retry last question"
@@ -318,28 +315,46 @@ function AiHelpSession({ diagnosticData }: { diagnosticData?: string }) {
           />
         )}
 
+        {/* Detailed AI Guidance Card */}
         {guidance && (
           <Card style={styles.guidanceCard}>
-            <Text style={styles.heading}>Possible causes</Text>
-            {guidance.possible_causes.length ? guidance.possible_causes.map((cause, index) => (
-              <Text key={`${index}-${cause}`} style={styles.listItem}>• {cause}</Text>
-            )) : <Text style={styles.body}>There is not enough information to suggest a likely cause.</Text>}
-            <Text style={styles.heading}>Safe next steps</Text>
-            {guidance.next_steps.map((step, index) => (
-              <Text key={`${index}-${step}`} style={styles.listItem}>{index + 1}. {step}</Text>
-            ))}
-            <Text style={styles.heading}>Urgency: {guidance.urgency.toUpperCase()}</Text>
-            <Text style={styles.safety}>{guidance.safety_note}</Text>
-            {!!guidance.follow_up_question && (
-              <Text style={styles.body}>Next question: {guidance.follow_up_question}</Text>
+            <View style={styles.guidanceHeader}>
+              <Text style={styles.heading}>Diagnosis & Safe Next Steps</Text>
+              <View style={styles.urgencyBadge}>
+                <Text style={styles.urgencyText}>{guidance.urgency.toUpperCase()} PRIORITY</Text>
+              </View>
+            </View>
+
+            <Text style={styles.subHeading}>Possible Causes:</Text>
+            {guidance.possible_causes.length ? (
+              guidance.possible_causes.map((cause, index) => (
+                <Text key={`${index}-${cause}`} style={styles.listItem}>
+                  • {cause}
+                </Text>
+              ))
+            ) : (
+              <Text style={styles.body}>No single obvious cause identified.</Text>
             )}
+
+            <Text style={styles.subHeading}>Recommended Steps:</Text>
+            {guidance.next_steps.map((step, index) => (
+              <Text key={`${index}-${step}`} style={styles.listItem}>
+                {index + 1}. {step}
+              </Text>
+            ))}
+
+            <Text style={styles.safetyNote}>{guidance.safety_note}</Text>
+
             {guidance.recommend_mechanic && (
               <PrimaryButton
-                label="Find Nearby Mechanics"
-                onPress={() => router.push({
-                  pathname: '/(customer)/(tabs)/mechanics',
-                  params: { vehicleType, problemType },
-                })}
+                variant="orange"
+                label="Find Nearby Mechanics Now"
+                onPress={() =>
+                  router.push({
+                    pathname: '/(customer)/(tabs)/mechanics',
+                    params: { vehicleType, problemType },
+                  })
+                }
               />
             )}
           </Card>
@@ -358,7 +373,8 @@ function parseObdContext(value?: string): ObdContext | null {
       typeof report.captured_at === 'string' &&
       Array.isArray(report.readings) &&
       Array.isArray(report.codes)
-    ) return report;
+    )
+      return report;
   } catch {
     return null;
   }
@@ -366,58 +382,162 @@ function parseObdContext(value?: string): ObdContext | null {
 }
 
 const styles = StyleSheet.create({
-  screen: { padding: 0 },
+  screen: { paddingHorizontal: 0 },
   content: { padding: 16, paddingBottom: 36 },
-  safetyBanner: { backgroundColor: theme.colors.orangeLight, borderColor: '#FED7AA' },
-  safety: { color: '#C2410C', lineHeight: 20, fontWeight: '700' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  safetyBanner: {
+    backgroundColor: theme.colors.orangeLight,
+    borderColor: theme.colors.orangeSubtle,
+    borderWidth: 1.5,
+    borderRadius: theme.radius.lg,
+    padding: 14,
+    marginBottom: 16,
+  },
+  safetyTitle: {
+    color: theme.colors.orangeText,
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  safety: {
+    color: theme.colors.orangeText,
+    lineHeight: 19,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 14,
+  },
   chip: {
     backgroundColor: theme.colors.surface,
     borderColor: theme.colors.border,
     borderWidth: 1.5,
-    borderRadius: 20,
-    paddingHorizontal: 12,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: 14,
     paddingVertical: 8,
   },
-  chipSelected: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primaryLight },
-  chipText: { color: theme.colors.text, fontSize: 13, fontWeight: '600' },
-  row: { flexDirection: 'row', gap: 8 },
+  chipSelected: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primaryLight,
+  },
+  chipText: {
+    color: theme.colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  chipTextSelected: {
+    color: theme.colors.primaryDark,
+    fontWeight: '800',
+  },
+  row: { flexDirection: 'row', gap: 10 },
   halfField: { flex: 1 },
-  actionRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  actionRow: { flexDirection: 'row', gap: 10, marginVertical: 8 },
   outlineAction: {
     flex: 1,
-    padding: 10,
-    borderRadius: 10,
+    paddingVertical: 10,
+    borderRadius: theme.radius.md,
     borderColor: theme.colors.primary,
     borderWidth: 1.5,
     alignItems: 'center',
     backgroundColor: theme.colors.surface,
   },
-  actionText: { color: theme.colors.primary, fontWeight: '700', fontSize: 12 },
-  diagnosticLabel: { color: theme.colors.muted, fontSize: 12, marginBottom: 8 },
-  chat: { gap: 8, marginVertical: 12 },
-  message: { maxWidth: '88%', padding: 12, borderRadius: 14 },
-  userMessage: { alignSelf: 'flex-end', backgroundColor: theme.colors.primary },
+  actionText: {
+    color: theme.colors.primaryDark,
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  diagnosticBadge: {
+    backgroundColor: theme.colors.yellowLight,
+    borderColor: theme.colors.yellow,
+    borderWidth: 1,
+    borderRadius: theme.radius.sm,
+    padding: 8,
+    marginBottom: 12,
+  },
+  diagnosticText: {
+    color: theme.colors.yellowText,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  chat: { gap: 10, marginVertical: 12 },
+  message: { maxWidth: '85%', padding: 14, borderRadius: theme.radius.lg },
+  userMessage: {
+    alignSelf: 'flex-end',
+    backgroundColor: theme.colors.primary, // Sky Blue
+    borderBottomRightRadius: 4,
+  },
   assistantMessage: {
     alignSelf: 'flex-start',
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    borderBottomLeftRadius: 4,
+    ...theme.shadows.card,
   },
-  messageText: { color: theme.colors.text, lineHeight: 20 },
-  userMessageText: { color: '#FFFFFF', fontWeight: '500' },
+  messageText: { color: theme.colors.text, lineHeight: 20, fontSize: 14 },
+  userMessageText: { color: '#FFFFFF', fontWeight: '600' },
   quickChip: {
-    borderRadius: 14,
+    borderRadius: theme.radius.pill,
     backgroundColor: theme.colors.primaryLight,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 9,
     borderWidth: 1,
-    borderColor: '#BAE6FD',
+    borderColor: theme.colors.primarySubtle,
   },
   quickText: { color: theme.colors.primaryDark, fontSize: 12, fontWeight: '700' },
-  messageInput: { minHeight: 72, textAlignVertical: 'top' },
-  guidanceCard: { marginTop: 16 },
-  heading: { color: theme.colors.text, fontWeight: '800', marginTop: 10, marginBottom: 4 },
-  body: { color: theme.colors.muted, lineHeight: 20 },
-  listItem: { color: theme.colors.muted, lineHeight: 20, marginBottom: 3 },
+  messageInput: { minHeight: 76, textAlignVertical: 'top' },
+  guidanceCard: {
+    marginTop: 20,
+    borderRadius: theme.radius.xl,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: theme.colors.primarySubtle,
+    ...theme.shadows.cardElevated,
+  },
+  guidanceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  heading: {
+    color: theme.colors.text,
+    fontWeight: '800',
+    fontSize: 16,
+    flex: 1,
+  },
+  urgencyBadge: {
+    backgroundColor: theme.colors.yellowLight,
+    borderColor: theme.colors.yellow,
+    borderWidth: 1,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  urgencyText: {
+    color: theme.colors.yellowText,
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  subHeading: {
+    color: theme.colors.text,
+    fontWeight: '700',
+    fontSize: 14,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  body: { color: theme.colors.muted, lineHeight: 20, fontSize: 13 },
+  listItem: { color: theme.colors.textSecondary, lineHeight: 20, marginBottom: 3, fontSize: 13 },
+  safetyNote: {
+    color: theme.colors.orangeText,
+    backgroundColor: theme.colors.orangeLight,
+    padding: 10,
+    borderRadius: theme.radius.sm,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '600',
+    marginVertical: 12,
+  },
 });

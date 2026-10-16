@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { ScrollView, Text } from 'react-native';
 
+import AutoCaresLogo from '../../../components/autocares-logo';
 import { Card, OutlineButton, Screen, Subtitle, Title } from '../../../components/ui';
 import { theme } from '../../../constants/autocares-theme';
 
@@ -16,7 +17,8 @@ const tools = [
 export default function AdminTools() {
   return (
     <Screen>
-      <ScrollView>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <AutoCaresLogo size="header" style={{ marginBottom: 12, alignSelf: 'flex-start' }} />
         <Title>Administrator tools</Title>
         <Subtitle>Manage platform services and communications.</Subtitle>
         {tools.map(([route, title, description]) => (

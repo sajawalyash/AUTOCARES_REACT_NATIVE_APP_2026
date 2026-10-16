@@ -61,7 +61,7 @@ export default function RequestScreen() {
       if (requestedVehicle) setVehicleId(requestedVehicle.id);
       else if (list[0]) setVehicleId(list[0].id);
       if (loc.coords) setCoords(loc.coords);
-      if (loc.error) setError((current) => current ? `${current} ${loc.error}` : loc.error);
+      if (loc.error) setError((current) => (current ? `${current} ${loc.error}` : loc.error));
       setLoading(false);
     })();
   }, [user, params.problemType, params.vehicleType]);
@@ -69,11 +69,11 @@ export default function RequestScreen() {
   async function submit() {
     if (!user) return;
     if (!problem) {
-      setError('No service categories are currently available.');
+      setError('Please select a service problem category.');
       return;
     }
     if (!coords) {
-      setError('Location is required to submit a roadside request.');
+      setError('Live location is required to submit a roadside request.');
       return;
     }
     setSubmitting(true);
@@ -90,7 +90,7 @@ export default function RequestScreen() {
     });
     setSubmitting(false);
     if (createError || !request) {
-      Alert.alert('Request failed', createError ?? 'Unknown error');
+      Alert.alert('Request failed', createError ?? 'Unknown error occurred.');
       return;
     }
     replace(`/(customer)/tracking/${request.id}`);
@@ -99,75 +99,113 @@ export default function RequestScreen() {
   if (loading) {
     return (
       <Screen>
-        <LoadingState />
+        <LoadingState label="Preparing assistance form…" />
       </Screen>
     );
   }
 
   return (
     <Screen>
-      <ScrollView>
-        <Title>Request roadside assistance</Title>
-        <Subtitle>Select a problem, share your location, and submit.</Subtitle>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <Title>Request Roadside Help</Title>
+        <Subtitle>Select the problem, choose your vehicle, and request assistance.</Subtitle>
         <ErrorText message={error} />
 
-        <Label>Problem type</Label>
-        <View style={styles.row}>
-          {categories.map((category) => (
-            <Pressable
-              key={category.id}
-              onPress={() => setProblem(category.id)}
-              style={[styles.chip, problem === category.id && styles.chipOn]}>
-              <Text style={styles.chipText}>{category.label}</Text>
-            </Pressable>
-          ))}
+        {/* Problem Type Section */}
+        <Label>Select Service Problem</Label>
+        <View style={styles.chipsRow}>
+          {categories.map((category) => {
+            const isSelected = problem === category.id;
+            return (
+              <Pressable
+                key={category.id}
+                onPress={() => setProblem(category.id)}
+                style={[styles.chip, isSelected && styles.chipSelected]}>
+                <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                  {category.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
 
-        <Label>Vehicle</Label>
+        {/* Vehicle Selection Section */}
+        <Label>Select Vehicle</Label>
         {vehicles.length === 0 ? (
-          <Text style={styles.hint}>No vehicles saved. You can still submit, or add one first.</Text>
+          <View style={styles.emptyVehicleBox}>
+            <Text style={styles.emptyVehicleText}>
+              No vehicles saved yet. You can still submit this request.
+            </Text>
+          </View>
         ) : (
-          vehicles.map((v) => (
-            <Pressable
-              key={v.id}
-              onPress={() => setVehicleId(v.id)}
-              style={[styles.vehicle, vehicleId === v.id && styles.vehicleOn]}>
-              <Text style={styles.vehicleText}>
-                {v.year ? `${v.year} ` : ''}
-                {vehicleLabel(v)}
-              </Text>
-            </Pressable>
-          ))
+          <View style={styles.vehicleList}>
+            {vehicles.map((v) => {
+              const isSelected = vehicleId === v.id;
+              return (
+                <Pressable
+                  key={v.id}
+                  onPress={() => setVehicleId(v.id)}
+                  style={[styles.vehicleCard, isSelected && styles.vehicleCardSelected]}>
+                  <View style={styles.vehicleCardContent}>
+                    <Text style={[styles.vehicleTitle, isSelected && styles.vehicleTitleSelected]}>
+                      {v.year ? `${v.year} ` : ''}
+                      {vehicleLabel(v)}
+                    </Text>
+                    {v.registration_number ? (
+                      <Text style={styles.vehicleSub}>{v.registration_number}</Text>
+                    ) : null}
+                  </View>
+                  <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
+                    {isSelected && <View style={styles.radioDot} />}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
         )}
 
-        <Label>Details</Label>
+        {/* Details Note */}
+        <Label>Describe the issue (optional)</Label>
         <Field
           value={description}
           onChangeText={setDescription}
-          placeholder="Describe what happened"
+          placeholder="e.g. flat front tire, engine smoking, battery drained..."
           multiline
-          style={{ minHeight: 80, textAlignVertical: 'top' }}
+          style={styles.detailsField}
         />
 
-        <Text style={styles.hint}>
-          Location:{' '}
-          {coords
-            ? `${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}`
-            : 'Not available'}
-        </Text>
+        {/* Location Status Card */}
+        <View style={styles.locationCard}>
+          <Text style={styles.locationTitle}>📍 Incident Location</Text>
+          <Text style={styles.locationCoords}>
+            {coords
+              ? `${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)} (GPS locked)`
+              : 'Detecting live coordinates…'}
+          </Text>
+        </View>
 
+        {/* Diagnosis Fee Card (Yellow Accent) */}
         <Card style={styles.feeCard}>
-          <View style={styles.feeRow}>
-            <Text style={styles.feeLabel}>Fixed Diagnosis Charge</Text>
-            <Text style={styles.feeValue}>Rs. 300 PKR</Text>
+          <View style={styles.feeHeader}>
+            <View>
+              <Text style={styles.feeLabel}>Standard Diagnosis Fee</Text>
+              <Text style={styles.feeHint}>Covers mechanic arrival & vehicle inspection</Text>
+            </View>
+            <View style={styles.priceTag}>
+              <Text style={styles.priceTagText}>Rs. 300 PKR</Text>
+            </View>
           </View>
+          <View style={styles.feeDivider} />
           <Text style={styles.feeNote}>
-            Applied automatically to all requests (Cars, Bikes, Scooters, Vans). Pay directly to the mechanic in cash upon arrival.
+            Pay directly in cash to the mechanic upon arrival. Any repair parts or extra labor
+            charges will be submitted and approved separately.
           </Text>
         </Card>
 
+        {/* Submit Button (Orange CTA) */}
         <PrimaryButton
-          label={submitting ? 'Submitting…' : 'Submit request (Rs. 300 PKR Fee)'}
+          variant="orange"
+          label={submitting ? 'Submitting Request…' : 'Submit Roadside Request (Rs. 300 Fee)'}
           onPress={submit}
           disabled={submitting}
         />
@@ -177,55 +215,166 @@ export default function RequestScreen() {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
+  scroll: {
+    paddingBottom: 36,
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
   chip: {
     borderWidth: 1.5,
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.surface,
-    borderRadius: 20,
+    borderRadius: theme.radius.pill,
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 9,
   },
-  chipOn: { backgroundColor: theme.colors.primaryLight, borderColor: theme.colors.primary },
-  chipText: { color: theme.colors.text, fontWeight: '700', fontSize: 13 },
-  vehicle: {
-    borderWidth: 1.5,
-    borderColor: theme.colors.border,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
-    backgroundColor: theme.colors.surface,
+  chipSelected: {
+    backgroundColor: theme.colors.primaryLight,
+    borderColor: theme.colors.primary,
   },
-  vehicleOn: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primaryLight },
-  vehicleText: { color: theme.colors.text, fontWeight: '700', fontSize: 14 },
-  hint: { color: theme.colors.muted, marginBottom: 14, fontSize: 13 },
-  feeCard: {
-    backgroundColor: theme.colors.yellowLight,
-    borderColor: '#FDE047',
-    borderWidth: 1.5,
-    borderRadius: 14,
+  chipText: {
+    color: theme.colors.textSecondary,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  chipTextSelected: {
+    color: theme.colors.primaryDark,
+    fontWeight: '800',
+  },
+  vehicleList: {
+    gap: 8,
     marginBottom: 16,
-    padding: 14,
   },
-  feeRow: {
+  vehicleCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    padding: 14,
+    backgroundColor: theme.colors.surface,
+  },
+  vehicleCardSelected: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primaryLight,
+  },
+  vehicleCardContent: {
+    flex: 1,
+  },
+  vehicleTitle: {
+    color: theme.colors.text,
+    fontWeight: '800',
+    fontSize: 14,
+  },
+  vehicleTitleSelected: {
+    color: theme.colors.primaryDark,
+  },
+  vehicleSub: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  radioCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioCircleSelected: {
+    borderColor: theme.colors.primary,
+  },
+  radioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: theme.colors.primary,
+  },
+  emptyVehicleBox: {
+    backgroundColor: theme.colors.surfaceSubtle,
+    borderRadius: theme.radius.md,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  emptyVehicleText: {
+    color: theme.colors.muted,
+    fontSize: 13,
+  },
+  detailsField: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  locationCard: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    padding: 12,
+    marginBottom: 16,
+  },
+  locationTitle: {
+    color: theme.colors.text,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  locationCoords: {
+    color: theme.colors.muted,
+    fontSize: 13,
+    marginTop: 2,
+  },
+  feeCard: {
+    backgroundColor: theme.colors.yellowLight,
+    borderColor: theme.colors.yellow,
+    borderWidth: 1.5,
+    borderRadius: theme.radius.lg,
+    marginBottom: 20,
+    padding: 16,
+    ...theme.shadows.card,
+  },
+  feeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   feeLabel: {
     fontSize: 15,
     fontWeight: '800',
     color: theme.colors.text,
   },
-  feeValue: {
-    fontSize: 17,
+  feeHint: {
+    fontSize: 12,
+    color: theme.colors.muted,
+    marginTop: 2,
+  },
+  priceTag: {
+    backgroundColor: theme.colors.yellow,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  priceTagText: {
+    fontSize: 15,
     fontWeight: '900',
-    color: '#854D0E',
+    color: theme.colors.yellowText,
+  },
+  feeDivider: {
+    height: 1,
+    backgroundColor: theme.colors.yellowSubtle,
+    marginVertical: 10,
   },
   feeNote: {
     fontSize: 12,
-    color: '#713F12',
-    lineHeight: 17,
+    color: theme.colors.yellowText,
+    lineHeight: 18,
+    fontWeight: '500',
   },
 });

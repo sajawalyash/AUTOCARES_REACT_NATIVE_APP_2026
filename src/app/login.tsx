@@ -6,11 +6,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AutoCaresLogo from '../components/autocares-logo';
 import { theme } from '../constants/autocares-theme';
@@ -18,6 +20,7 @@ import { replace } from '../lib/nav';
 import { useAuth } from '../providers/auth-provider';
 
 export default function LoginScreen() {
+  const insets = useSafeAreaInsets();
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,7 +45,6 @@ export default function LoginScreen() {
       return;
     }
 
-    // Root index redirects by role after profile loads
     replace('/');
   }
 
@@ -50,58 +52,91 @@ export default function LoginScreen() {
     <KeyboardAvoidingView
       style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.container}>
-        <AutoCaresLogo size="hero" style={styles.logoImage} />
-        <Text style={styles.title}>Welcome back!</Text>
-        <Text style={styles.subtitle}>Sign in to access your vehicle support.</Text>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContainer,
+          {
+            paddingTop: Math.max(insets.top, 24) + 16,
+            paddingBottom: Math.max(insets.bottom, 24) + 16,
+          },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
+        <View style={styles.cardContainer}>
+          {/* Logo & Brand Header */}
+          <View style={styles.logoWrapper}>
+            <AutoCaresLogo size="hero" />
+            <View style={styles.accentBadge}>
+              <Text style={styles.accentBadgeText}>ROADSIDE ASSISTANCE</Text>
+            </View>
+          </View>
 
-        <Text style={styles.label}>Email address</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="you@example.com"
-          placeholderTextColor={theme.colors.muted}
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-          editable={!isSubmitting}
-        />
+          <Text style={styles.title}>Welcome back</Text>
+          <Text style={styles.subtitle}>Sign in to access on-demand vehicle support</Text>
 
-        <Text style={styles.label}>Password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your password"
-          placeholderTextColor={theme.colors.muted}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoComplete="current-password"
-          editable={!isSubmitting}
-        />
+          {/* Form Fields */}
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Email address</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="you@example.com"
+              placeholderTextColor={theme.colors.muted}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              editable={!isSubmitting}
+            />
+          </View>
 
-        <Pressable
-          style={[styles.button, isSubmitting && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={isSubmitting}>
-          {isSubmitting ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.buttonText}>Login</Text>
-          )}
-        </Pressable>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your password"
+              placeholderTextColor={theme.colors.muted}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoComplete="current-password"
+              editable={!isSubmitting}
+            />
+          </View>
 
-        <Text style={styles.bottomText}>
-          {"Don't have an account? "}
-          <Link href="/register" style={styles.link}>
-            Register
+          {/* Primary Action Button (Sky Blue) */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.button,
+              isSubmitting && styles.buttonDisabled,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={handleLogin}
+            disabled={isSubmitting}>
+            {isSubmitting ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={styles.buttonText}>Sign In</Text>
+            )}
+          </Pressable>
+
+          {/* Footer Navigation */}
+          <View style={styles.footerRow}>
+            <Text style={styles.bottomText}>{"Don't have an account? "}</Text>
+            <Link href="/register" asChild>
+              <Pressable>
+                <Text style={styles.link}>Register here</Text>
+              </Pressable>
+            </Link>
+          </View>
+
+          <Link href="/" asChild>
+            <Pressable style={styles.backWrapper}>
+              <Text style={styles.back}>Back to Home</Text>
+            </Pressable>
           </Link>
-        </Text>
-
-        <Link href="/" style={styles.back}>
-          Back to AutoCares home
-        </Link>
-      </View>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -110,27 +145,51 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: theme.colors.background,
-    justifyContent: 'center',
   },
-  container: {
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  cardContainer: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     paddingHorizontal: 24,
     paddingVertical: 32,
-    maxWidth: 480,
+    maxWidth: 440,
     width: '100%',
     alignSelf: 'center',
+    ...theme.shadows.cardElevated,
   },
-  logoImage: {
-    width: 210,
-    height: 120,
-    alignSelf: 'center',
+  logoWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 20,
+  },
+  accentBadge: {
+    backgroundColor: theme.colors.yellowLight,
+    borderColor: theme.colors.yellow,
+    borderWidth: 1,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginTop: 10,
+  },
+  accentBadgeText: {
+    color: theme.colors.yellowText,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
   },
   title: {
     color: theme.colors.text,
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
     textAlign: 'center',
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
   },
   subtitle: {
     color: theme.colors.muted,
@@ -140,58 +199,74 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     lineHeight: 20,
   },
+  formGroup: {
+    marginBottom: 16,
+  },
   label: {
     color: theme.colors.text,
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 6,
+    letterSpacing: 0.1,
   },
   input: {
-    height: 50,
+    minHeight: 48,
     borderWidth: 1,
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.surface,
-    borderRadius: 12,
+    borderRadius: theme.radius.md,
     paddingHorizontal: 14,
-    marginBottom: 16,
+    paddingVertical: 12,
     color: theme.colors.text,
     fontSize: 15,
   },
   button: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: 12,
+    backgroundColor: theme.colors.primary, // Sky Blue #38B8E8
+    borderRadius: theme.radius.md,
+    minHeight: 50,
     paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 6,
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
+    justifyContent: 'center',
+    marginTop: 8,
+    ...theme.shadows.primaryButton,
   },
   buttonDisabled: {
-    opacity: 0.65,
+    opacity: 0.6,
+  },
+  buttonPressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.99 }],
   },
   buttonText: {
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '800',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 22,
   },
   bottomText: {
     color: theme.colors.muted,
-    textAlign: 'center',
-    marginTop: 22,
     fontSize: 14,
   },
   link: {
-    color: theme.colors.primary,
-    fontWeight: '700',
+    color: theme.colors.primaryDark,
+    fontWeight: '800',
+    fontSize: 14,
+  },
+  backWrapper: {
+    alignSelf: 'center',
+    marginTop: 16,
+    paddingVertical: 4,
   },
   back: {
     color: theme.colors.muted,
     textAlign: 'center',
-    marginTop: 18,
     fontSize: 13,
+    fontWeight: '600',
   },
 });
