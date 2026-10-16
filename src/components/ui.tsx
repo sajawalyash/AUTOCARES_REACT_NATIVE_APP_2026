@@ -14,10 +14,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { theme } from '../constants/autocares-theme';
 
-export function Screen({ children, style, ...rest }: ViewProps) {
+export interface ScreenProps extends ViewProps {
+  safeBottom?: boolean;
+}
+
+export function Screen({ children, style, safeBottom = true, ...rest }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const topPadding = Math.max(insets.top, 16) + 6;
-  const bottomPadding = Math.max(insets.bottom, 16);
+  const bottomPadding = safeBottom ? Math.max(insets.bottom, 16) : 0;
 
   return (
     <View style={styles.screenWrapper}>

@@ -61,14 +61,14 @@ export default function EarningsScreen() {
 
   if (loading) {
     return (
-      <Screen>
+      <Screen safeBottom={false}>
         <LoadingState label="Loading earnings data…" />
       </Screen>
     );
   }
 
   return (
-    <Screen>
+    <Screen safeBottom={false}>
       <Title>Earnings & Ledger</Title>
       <Subtitle>Breakdown of diagnosis fees, repair charges, and payment transactions.</Subtitle>
       <ErrorText message={categoryError} />

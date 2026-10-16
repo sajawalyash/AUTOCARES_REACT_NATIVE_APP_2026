@@ -42,14 +42,14 @@ export default function MyJobsScreen() {
 
   if (loading) {
     return (
-      <Screen>
+      <Screen safeBottom={false}>
         <LoadingState />
       </Screen>
     );
   }
 
   return (
-    <Screen>
+    <Screen safeBottom={false}>
       <Title>My jobs</Title>
       <Subtitle>Accepted and completed roadside jobs.</Subtitle>
       <ErrorText message={categoryError} />
@@ -59,6 +59,8 @@ export default function MyJobsScreen() {
         <FlatList
           data={jobs}
           keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingBottom: 28 }}
+          showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
             <Pressable onPress={() => go(`/(mechanic)/job/${item.id}`)}>
               <Card>

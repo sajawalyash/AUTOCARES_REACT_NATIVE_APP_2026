@@ -90,14 +90,14 @@ export default function IncomingRequests() {
 
   if (loading) {
     return (
-      <Screen>
+      <Screen safeBottom={false}>
         <LoadingState />
       </Screen>
     );
   }
 
   return (
-    <Screen>
+    <Screen safeBottom={false}>
       <Title>Incoming requests</Title>
       <Subtitle>Review problem, vehicle, location, then accept or reject.</Subtitle>
       <ErrorText message={error} />
@@ -109,6 +109,8 @@ export default function IncomingRequests() {
         <FlatList
           data={requests}
           keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingBottom: 28 }}
+          showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
             <Card>
               <Text style={{ fontWeight: '800', color: theme.colors.text }}>

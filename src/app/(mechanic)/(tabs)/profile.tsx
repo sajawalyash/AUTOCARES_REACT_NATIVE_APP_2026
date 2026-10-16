@@ -71,7 +71,7 @@ export default function MechanicProfileScreen() {
   const isApproved = verification === 'approved';
 
   return (
-    <Screen>
+    <Screen safeBottom={false}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <Title>Mechanic Profile</Title>
         <Subtitle>{`${profile?.full_name ?? 'Technician'} · ${user?.email ?? ''}`}</Subtitle>

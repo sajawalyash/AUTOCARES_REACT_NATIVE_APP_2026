@@ -12,6 +12,11 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "AutoCares uses your location to find nearby mechanics and share your roadside position.",
         "NSBluetoothAlwaysUsageDescription": "AutoCares uses Bluetooth to find and connect to your BLE OBD-II adapter."
+      },
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAIi95dchgUrtLmuMCsElW1drwlTIcRGWU"
+        }
       }
     },
 

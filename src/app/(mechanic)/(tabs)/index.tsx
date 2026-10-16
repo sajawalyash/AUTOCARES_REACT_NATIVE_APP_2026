@@ -61,7 +61,7 @@ export default function MechanicHome() {
 
   if (loading) {
     return (
-      <Screen>
+      <Screen safeBottom={false}>
         <LoadingState label="Loading mechanic overview…" />
       </Screen>
     );
@@ -70,7 +70,7 @@ export default function MechanicHome() {
   const isApproved = mechanic?.verification_status === 'approved';
 
   return (
-    <Screen>
+    <Screen safeBottom={false}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}

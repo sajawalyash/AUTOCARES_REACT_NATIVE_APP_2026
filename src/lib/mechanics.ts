@@ -17,24 +17,42 @@ export async function listApprovedMechanics() {
 }
 
 export async function getNearbyMechanics(
-  lat: number,
-  lng: number,
+  lat?: number | null,
+  lng?: number | null,
   maxKm = 50
 ): Promise<{ mechanics: NearbyMechanic[]; error: string | null }> {
   const { mechanics, error } = await listApprovedMechanics();
   if (error) return { mechanics: [], error };
 
-  const nearby = mechanics
-    .filter((m) => m.latitude != null && m.longitude != null)
+  const validMechanics = mechanics.filter(
+    (m) =>
+      m.latitude != null &&
+      m.longitude != null &&
+      !isNaN(Number(m.latitude)) &&
+      !isNaN(Number(m.longitude))
+  );
+
+  if (lat == null || lng == null || isNaN(lat) || isNaN(lng)) {
+    return {
+      mechanics: validMechanics.map((m) => ({
+        ...m,
+        distance_km: 0,
+        eta_minutes: 0,
+      })),
+      error: null,
+    };
+  }
+
+  const nearby = validMechanics
     .map((m) => {
-      const distance_km = distanceKm(lat, lng, m.latitude!, m.longitude!);
+      const distance_km = distanceKm(lat, lng, Number(m.latitude), Number(m.longitude));
       return {
         ...m,
         distance_km,
         eta_minutes: etaMinutesFromDistance(distance_km),
       };
     })
-    .filter((m) => m.distance_km <= Math.max(maxKm, m.service_radius_km))
+    .filter((m) => m.distance_km <= Math.max(maxKm, m.service_radius_km || 15))
     .sort((a, b) => a.distance_km - b.distance_km);
 
   return { mechanics: nearby, error: null };

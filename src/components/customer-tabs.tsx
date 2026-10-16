@@ -1,30 +1,55 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { theme } from '../constants/autocares-theme';
 
 export default function CustomerTabs() {
+  const insets = useSafeAreaInsets();
+
+  const hasBottomInset = insets.bottom > 0;
+  const bottomPadding = hasBottomInset
+    ? insets.bottom + (Platform.OS === 'android' ? 6 : 4)
+    : Platform.OS === 'android' ? 10 : 8;
+
+  const topPadding = 8;
+  const contentHeight = 50;
+  const tabHeight = contentHeight + topPadding + bottomPadding;
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.muted,
+        tabBarHideOnKeyboard: true,
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '700',
-          marginTop: -2,
-          marginBottom: Platform.OS === 'ios' ? 0 : 4,
+          marginTop: 2,
+          marginBottom: 0,
+          letterSpacing: 0.1,
+        },
+        tabBarIconStyle: {
+          marginTop: 2,
+        },
+        tabBarItemStyle: {
+          justifyContent: 'center',
+          alignItems: 'center',
         },
         tabBarStyle: {
           backgroundColor: theme.colors.surface,
           borderTopColor: theme.colors.border,
-          borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 84 : 64,
-          paddingTop: 6,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 6,
-          ...theme.shadows.card,
+          borderTopWidth: StyleSheet.hairlineWidth || 1,
+          height: tabHeight,
+          paddingTop: topPadding,
+          paddingBottom: bottomPadding,
+          elevation: 10,
+          shadowColor: '#0F172A',
+          shadowOffset: { width: 0, height: -3 },
+          shadowOpacity: 0.08,
+          shadowRadius: 6,
         },
       }}>
       <Tabs.Screen

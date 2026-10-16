@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
   Card,
@@ -150,7 +150,7 @@ export default function TrackingScreen() {
         </Card>
 
         {/* Map View */}
-        {customerCoord && Platform.OS !== 'web' ? (
+        {customerCoord ? (
           <MapView
             style={styles.map}
             initialRegion={{
