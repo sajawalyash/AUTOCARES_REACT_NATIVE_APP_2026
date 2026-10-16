@@ -16,10 +16,23 @@ import { theme } from '../constants/autocares-theme';
 
 export function Screen({ children, style, ...rest }: ViewProps) {
   const insets = useSafeAreaInsets();
-  const topPadding = Math.max(insets.top, 20) + 8;
+  const topPadding = Math.max(insets.top, 16) + 6;
+  const bottomPadding = Math.max(insets.bottom, 16);
+
   return (
-    <View style={[styles.screen, { paddingTop: topPadding }, style]} {...rest}>
-      {children}
+    <View style={styles.screenWrapper}>
+      <View
+        style={[
+          styles.screen,
+          {
+            paddingTop: topPadding,
+            paddingBottom: bottomPadding,
+          },
+          style,
+        ]}
+        {...rest}>
+        {children}
+      </View>
     </View>
   );
 }
@@ -79,6 +92,7 @@ export function PrimaryButton({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
       style={({ pressed }) => [
         styles.button,
         isDanger && styles.dangerButton,
@@ -109,22 +123,30 @@ export function OutlineButton({
   onPress,
   disabled,
   children,
+  color,
 }: {
   label?: string;
   onPress: () => void;
   disabled?: boolean;
   children?: ReactNode;
+  color?: string;
 }) {
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
       style={({ pressed }) => [
         styles.outlineButton,
+        color ? { borderColor: color } : null,
         disabled && styles.disabled,
-        pressed && styles.pressed,
+        pressed && styles.pressedOutline,
       ]}>
-      {children ? children : <Text style={styles.outlineText}>{label}</Text>}
+      {children ? (
+        children
+      ) : (
+        <Text style={[styles.outlineText, color ? { color } : null]}>{label}</Text>
+      )}
     </Pressable>
   );
 }
@@ -137,11 +159,31 @@ export function Badge({
   variant?: 'blue' | 'yellow' | 'orange' | 'green' | 'muted';
 }) {
   const badgeStyles = {
-    blue: { bg: theme.colors.primaryLight, text: theme.colors.primaryDark, border: '#BAE6FD' },
-    yellow: { bg: theme.colors.yellowLight, text: '#854D0E', border: '#FDE047' },
-    orange: { bg: theme.colors.orangeLight, text: '#C2410C', border: '#FED7AA' },
-    green: { bg: theme.colors.successLight, text: '#15803D', border: '#BBF7D0' },
-    muted: { bg: theme.colors.surfaceSubtle, text: theme.colors.muted, border: theme.colors.border },
+    blue: {
+      bg: theme.colors.primaryLight,
+      text: theme.colors.primaryDark,
+      border: '#BAE6FD',
+    },
+    yellow: {
+      bg: theme.colors.yellowLight,
+      text: theme.colors.yellowText,
+      border: theme.colors.yellow,
+    },
+    orange: {
+      bg: theme.colors.orangeLight,
+      text: theme.colors.orangeText,
+      border: theme.colors.orange,
+    },
+    green: {
+      bg: theme.colors.successLight,
+      text: '#15803D',
+      border: '#BBF7D0',
+    },
+    muted: {
+      bg: theme.colors.surfaceSubtle,
+      text: theme.colors.muted,
+      border: theme.colors.border,
+    },
   }[variant];
 
   return (
@@ -151,11 +193,51 @@ export function Badge({
   );
 }
 
+export function StatusBadge({ status }: { status: string }) {
+  let variant: 'blue' | 'yellow' | 'orange' | 'green' | 'muted' = 'muted';
+  let label = status.replace('_', ' ');
+
+  switch (status) {
+    case 'pending':
+      variant = 'yellow';
+      label = 'Pending';
+      break;
+    case 'accepted':
+      variant = 'blue';
+      label = 'Accepted';
+      break;
+    case 'en_route':
+      variant = 'orange';
+      label = 'En Route';
+      break;
+    case 'in_progress':
+      variant = 'orange';
+      label = 'In Progress';
+      break;
+    case 'completed':
+      variant = 'green';
+      label = 'Completed';
+      break;
+    case 'paid':
+      variant = 'green';
+      label = 'Paid';
+      break;
+    case 'cancelled':
+      variant = 'muted';
+      label = 'Cancelled';
+      break;
+    default:
+      variant = 'blue';
+  }
+
+  return <Badge label={label} variant={variant} />;
+}
+
 export function LoadingState({ label = 'Loading…' }: { label?: string }) {
   return (
     <View style={styles.center}>
       <ActivityIndicator size="small" color={theme.colors.primary} />
-      <Text style={styles.muted}>{label}</Text>
+      <Text style={styles.mutedText}>{label}</Text>
     </View>
   );
 }
@@ -163,86 +245,94 @@ export function LoadingState({ label = 'Loading…' }: { label?: string }) {
 export function EmptyState({ message }: { message: string }) {
   return (
     <View style={styles.center}>
-      <Text style={styles.muted}>{message}</Text>
+      <Text style={styles.mutedText}>{message}</Text>
     </View>
   );
 }
 
-export function ErrorText({ message }: { message: string | null }) {
+export function ErrorText({ message }: { message: string | null | undefined }) {
   if (!message) return null;
-  return <Text style={styles.error}>{message}</Text>;
+  return (
+    <View style={styles.errorBox}>
+      <Text style={styles.errorText}>{message}</Text>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
+  screenWrapper: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    width: '100%',
+  },
   screen: {
     flex: 1,
     backgroundColor: theme.colors.background,
-    padding: 16,
+    paddingHorizontal: 16,
+    maxWidth: theme.layout.maxContentWidth,
+    width: '100%',
+    alignSelf: 'center',
   },
   title: {
     color: theme.colors.text,
-    fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-    marginBottom: 6,
+    fontSize: theme.typography.title.fontSize,
+    fontWeight: theme.typography.title.fontWeight,
+    letterSpacing: theme.typography.title.letterSpacing,
+    lineHeight: theme.typography.title.lineHeight,
+    marginBottom: 4,
   },
   subtitle: {
     color: theme.colors.muted,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: theme.typography.subtitle.fontSize,
+    lineHeight: theme.typography.subtitle.lineHeight,
     marginBottom: 16,
   },
   card: {
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.medium,
+    borderRadius: theme.radius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...theme.shadows.card,
   },
   label: {
     color: theme.colors.text,
     fontWeight: '700',
     fontSize: 13,
     marginBottom: 6,
+    letterSpacing: 0.1,
   },
   input: {
-    height: 50,
+    minHeight: 48,
     borderWidth: 1,
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.surface,
-    borderRadius: 12,
+    borderRadius: theme.radius.md,
     paddingHorizontal: 14,
+    paddingVertical: 12,
     marginBottom: 14,
     color: theme.colors.text,
     fontSize: 15,
   },
   button: {
     backgroundColor: theme.colors.primary, // Sky Blue #38B8E8
-    borderRadius: 12,
-    paddingVertical: 14,
+    borderRadius: theme.radius.md,
+    minHeight: 48,
+    paddingVertical: 13,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 6,
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-    elevation: 2,
+    ...theme.shadows.primaryButton,
   },
   yellowButton: {
     backgroundColor: theme.colors.yellow, // Yellow #FFD52A
-    shadowColor: theme.colors.yellow,
+    ...theme.shadows.yellowButton,
   },
   orangeButton: {
     backgroundColor: theme.colors.orange, // Orange #FF9800
-    shadowColor: theme.colors.orange,
+    ...theme.shadows.orangeButton,
   },
   dangerButton: {
     backgroundColor: theme.colors.dangerLight,
@@ -252,13 +342,13 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   buttonText: {
-    color: '#FFFFFF', // Clean readable white on Sky Blue
+    color: '#FFFFFF', // High-contrast crisp white on Sky Blue
     fontWeight: '800',
     fontSize: 15,
     letterSpacing: 0.2,
   },
   yellowText: {
-    color: theme.colors.text, // Slate text for optimal contrast on yellow
+    color: theme.colors.text, // Slate-900 text for optimal readability on Yellow #FFD52A
     fontWeight: '800',
   },
   orangeText: {
@@ -272,8 +362,9 @@ const styles = StyleSheet.create({
   outlineButton: {
     borderWidth: 1.5,
     borderColor: theme.colors.primary,
-    borderRadius: 12,
-    paddingVertical: 13,
+    borderRadius: theme.radius.md,
+    minHeight: 46,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
@@ -281,7 +372,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
   },
   outlineText: {
-    color: theme.colors.primary,
+    color: theme.colors.primaryDark,
     fontWeight: '700',
     fontSize: 14,
   },
@@ -299,11 +390,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   disabled: {
-    opacity: 0.55,
+    opacity: 0.5,
   },
   pressed: {
-    opacity: 0.85,
+    opacity: 0.88,
     transform: [{ scale: 0.99 }],
+  },
+  pressedOutline: {
+    backgroundColor: theme.colors.primaryLight,
   },
   center: {
     paddingVertical: 36,
@@ -311,15 +405,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
   },
-  muted: {
+  mutedText: {
     color: theme.colors.muted,
     textAlign: 'center',
     fontSize: 14,
   },
-  error: {
+  errorBox: {
+    backgroundColor: theme.colors.dangerLight,
+    borderColor: '#FECACA',
+    borderWidth: 1,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+  errorText: {
     color: theme.colors.danger,
     fontSize: 13,
     fontWeight: '600',
-    marginBottom: 10,
+    lineHeight: 18,
   },
 });

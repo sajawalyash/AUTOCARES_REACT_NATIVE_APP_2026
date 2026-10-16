@@ -8,6 +8,7 @@ import {
   LoadingState,
   OutlineButton,
   Screen,
+  StatusBadge,
   Subtitle,
   Title,
 } from '../../../components/ui';
@@ -21,7 +22,7 @@ import {
   getRequest,
 } from '../../../lib/requests';
 import type { MechanicLocation, ServiceRequest } from '../../../lib/types';
-import { FIXED_DIAGNOSIS_FEE, STATUS_LABELS } from '../../../lib/types';
+import { FIXED_DIAGNOSIS_FEE } from '../../../lib/types';
 
 export default function TrackingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -77,7 +78,7 @@ export default function TrackingScreen() {
   if (loading) {
     return (
       <Screen>
-        <LoadingState label="Loading tracking…" />
+        <LoadingState label="Loading live tracking…" />
       </Screen>
     );
   }
@@ -85,7 +86,7 @@ export default function TrackingScreen() {
   if (!request) {
     return (
       <Screen>
-        <ErrorText message={error ?? 'Not found'} />
+        <ErrorText message={error ?? 'Request not found.'} />
       </Screen>
     );
   }
@@ -112,29 +113,43 @@ export default function TrackingScreen() {
 
   return (
     <Screen>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <Title>Live tracking</Title>
-        <Subtitle>
-          {problemLabels[request.problem_type]} · {STATUS_LABELS[request.status]}
-        </Subtitle>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <View style={styles.topStatusRow}>
+          <View style={{ flex: 1 }}>
+            <Title>Live Tracking</Title>
+            <Subtitle>{problemLabels[request.problem_type]}</Subtitle>
+          </View>
+          <StatusBadge status={request.status} />
+        </View>
+
         <ErrorText message={error} />
         <ErrorText message={categoryError} />
 
-        <Card>
-          <Text style={styles.line}>
-            ETA:{' '}
-            {request.estimated_arrival_minutes != null
-              ? `~${request.estimated_arrival_minutes} min`
-              : 'Pending assignment'}
-          </Text>
-          <Text style={styles.line}>
-            Mechanic location:{' '}
+        {/* ETA & Mechanic Status Box */}
+        <Card style={styles.etaCard}>
+          <View style={styles.etaRow}>
+            <View style={styles.etaIconCircle}>
+              <Text style={styles.etaIcon}>⏱</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.etaLabel}>Estimated Arrival</Text>
+              <Text style={styles.etaValue}>
+                {request.estimated_arrival_minutes != null
+                  ? `~${request.estimated_arrival_minutes} minutes`
+                  : 'Pending mechanic confirmation'}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.divider} />
+          <Text style={styles.coordText}>
+            Mechanic GPS:{' '}
             {mechanicCoord
               ? `${mechanicCoord.latitude.toFixed(4)}, ${mechanicCoord.longitude.toFixed(4)}`
-              : 'Waiting for mechanic GPS share'}
+              : 'Awaiting mechanic location broadcast'}
           </Text>
         </Card>
 
+        {/* Map View */}
         {customerCoord && Platform.OS !== 'web' ? (
           <MapView
             style={styles.map}
@@ -143,31 +158,46 @@ export default function TrackingScreen() {
               latitudeDelta: 0.05,
               longitudeDelta: 0.05,
             }}>
-            <Marker coordinate={customerCoord} title="You" pinColor={theme.colors.blue} />
+            <Marker coordinate={customerCoord} title="Your Location" pinColor={theme.colors.blue} />
             {mechanicCoord && (
-              <Marker coordinate={mechanicCoord} title="Mechanic" pinColor={theme.colors.primaryDark} />
+              <Marker coordinate={mechanicCoord} title="Mechanic Location" pinColor={theme.colors.orange} />
             )}
           </MapView>
         ) : (
           <View style={styles.mapFallback}>
-            <Text style={styles.line}>Map unavailable on this platform.</Text>
+            <Text style={styles.mapFallbackText}>
+              Live roadside tracking active. Coordinates updated in real-time.
+            </Text>
           </View>
         )}
 
+        {/* Billing & Payment Breakdown Card */}
         <Card style={styles.billingCard}>
-          <Text style={styles.billingTitle}>Billing & Payment Breakdown</Text>
-          <Text style={styles.billingSub}>Payment mode: Direct cash to mechanic</Text>
+          <View style={styles.billingHeader}>
+            <Text style={styles.billingTitle}>Billing & Cash Receipts</Text>
+            <View style={styles.cashBadge}>
+              <Text style={styles.cashBadgeText}>CASH PAYMENT</Text>
+            </View>
+          </View>
+          <Text style={styles.billingSub}>Pay in cash directly to the technician</Text>
 
+          {/* Row 1: Fixed Diagnosis Fee */}
           <View style={styles.billRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.billItem}>Fixed Diagnosis Fee</Text>
-              <Text style={styles.billHint}>Standard fee applied to all requests</Text>
+              <Text style={styles.billItem}>Standard Diagnosis Fee</Text>
+              <Text style={styles.billHint}>Includes arrival and diagnostic inspection</Text>
             </View>
-            <View style={styles.amountBadge}>
+            <View style={styles.amountBadgeBox}>
               <Text style={styles.billAmount}>{formatPKR(diagnosisFee)}</Text>
-              <Text style={[styles.statusBadge, diagnosisPaid ? styles.paidBadge : styles.pendingBadge]}>
-                {diagnosisPaid ? 'Paid' : 'Pending'}
-              </Text>
+              <View
+                style={[
+                  styles.statusPill,
+                  diagnosisPaid ? styles.paidPill : styles.pendingPill,
+                ]}>
+                <Text style={[styles.statusPillText, diagnosisPaid ? styles.paidPillText : styles.pendingPillText]}>
+                  {diagnosisPaid ? 'Paid' : 'Pending'}
+                </Text>
+              </View>
             </View>
           </View>
 
@@ -179,30 +209,43 @@ export default function TrackingScreen() {
             />
           )}
 
-          <View style={[styles.billRow, { marginTop: 12 }]}>
+          <View style={styles.divider} />
+
+          {/* Row 2: Repair Charges */}
+          <View style={styles.billRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.billItem}>Mechanic Repair Charges</Text>
               <Text style={styles.billHint}>
                 {repairCharges != null
-                  ? 'Entered by mechanic upon vehicle inspection/fix'
-                  : 'Pending mechanic assessment'}
+                  ? 'Assessed by mechanic on-site'
+                  : 'Pending vehicle inspection'}
               </Text>
             </View>
-            <View style={styles.amountBadge}>
+            <View style={styles.amountBadgeBox}>
               <Text style={styles.billAmount}>
-                {repairCharges != null ? formatPKR(repairCharges) : 'Pending'}
+                {repairCharges != null ? formatPKR(repairCharges) : '—'}
               </Text>
               {repairCharges != null && (
-                <Text style={[styles.statusBadge, repairPaid ? styles.paidBadge : styles.pendingBadge]}>
-                  {repairPaid ? 'Paid' : 'Pending'}
-                </Text>
+                <View
+                  style={[
+                    styles.statusPill,
+                    repairPaid ? styles.paidPill : styles.pendingPill,
+                  ]}>
+                  <Text style={[styles.statusPillText, repairPaid ? styles.paidPillText : styles.pendingPillText]}>
+                    {repairPaid ? 'Paid' : 'Pending'}
+                  </Text>
+                </View>
               )}
             </View>
           </View>
 
           {repairCharges != null && !repairPaid && request.mechanic_id && (
             <OutlineButton
-              label={confirmingPayment ? 'Confirming…' : `Confirm Cash Paid (${formatPKR(repairCharges)})`}
+              label={
+                confirmingPayment
+                  ? 'Confirming…'
+                  : `Confirm Cash Paid (${formatPKR(repairCharges)})`
+              }
               onPress={() => handleConfirmPayment('repair_charge')}
               disabled={confirmingPayment}
             />
@@ -210,6 +253,7 @@ export default function TrackingScreen() {
 
           <View style={styles.divider} />
 
+          {/* Grand Total */}
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total Payable</Text>
             <Text style={styles.totalAmount}>{formatPKR(totalAmount)}</Text>
@@ -217,7 +261,11 @@ export default function TrackingScreen() {
         </Card>
 
         {['pending', 'accepted', 'en_route'].includes(request.status) && (
-          <OutlineButton label="Cancel request" onPress={onCancel} />
+          <OutlineButton
+            label="Cancel Request"
+            color={theme.colors.danger}
+            onPress={onCancel}
+          />
         )}
       </ScrollView>
     </Screen>
@@ -225,31 +273,114 @@ export default function TrackingScreen() {
 }
 
 const styles = StyleSheet.create({
-  line: { color: theme.colors.muted, marginBottom: 4 },
-  map: { height: 260, borderRadius: 16, marginVertical: 12 },
-  mapFallback: {
-    height: 120,
-    borderRadius: 16,
-    backgroundColor: theme.colors.secondary,
+  scroll: {
+    paddingBottom: 36,
+  },
+  topStatusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  etaCard: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    padding: 16,
+    marginBottom: 12,
+  },
+  etaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  etaIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: theme.colors.yellowLight,
+    borderWidth: 1,
+    borderColor: theme.colors.yellow,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  etaIcon: {
+    fontSize: 20,
+  },
+  etaLabel: {
+    fontSize: 12,
+    color: theme.colors.muted,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  etaValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: theme.colors.text,
+    marginTop: 2,
+  },
+  coordText: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  map: {
+    height: 240,
+    borderRadius: theme.radius.lg,
     marginVertical: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  mapFallback: {
+    height: 90,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.primaryLight,
+    borderWidth: 1,
+    borderColor: theme.colors.primarySubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    marginVertical: 12,
+  },
+  mapFallbackText: {
+    color: theme.colors.primaryDark,
+    textAlign: 'center',
+    fontWeight: '600',
+    fontSize: 13,
   },
   billingCard: {
     backgroundColor: theme.colors.surface,
     borderColor: theme.colors.border,
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: theme.radius.lg,
+    padding: 18,
     marginVertical: 12,
+    ...theme.shadows.cardElevated,
+  },
+  billingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   billingTitle: {
     fontSize: 17,
     fontWeight: '800',
     color: theme.colors.text,
   },
+  cashBadge: {
+    backgroundColor: theme.colors.yellowLight,
+    borderColor: theme.colors.yellow,
+    borderWidth: 1,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  cashBadgeText: {
+    color: theme.colors.yellowText,
+    fontSize: 10,
+    fontWeight: '800',
+  },
   billingSub: {
-    fontSize: 12,
+    fontSize: 13,
     color: theme.colors.muted,
     marginTop: 2,
     marginBottom: 14,
@@ -270,30 +401,39 @@ const styles = StyleSheet.create({
     color: theme.colors.muted,
     marginTop: 2,
   },
-  amountBadge: {
+  amountBadgeBox: {
     alignItems: 'flex-end',
   },
   billAmount: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
     color: theme.colors.text,
   },
-  statusBadge: {
-    fontSize: 11,
-    fontWeight: '700',
+  statusPill: {
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: theme.radius.pill,
     marginTop: 4,
-    overflow: 'hidden',
   },
-  paidBadge: {
+  paidPill: {
     backgroundColor: theme.colors.successLight,
-    color: theme.colors.success,
   },
-  pendingBadge: {
+  paidPillText: {
+    color: theme.colors.success,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  pendingPill: {
     backgroundColor: theme.colors.yellowLight,
-    color: '#854D0E',
+  },
+  pendingPillText: {
+    color: theme.colors.yellowText,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  statusPillText: {
+    fontSize: 11,
+    fontWeight: '800',
   },
   divider: {
     height: 1,
@@ -311,8 +451,8 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
   },
   totalAmount: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '900',
-    color: theme.colors.blue,
+    color: theme.colors.primaryDark,
   },
 });

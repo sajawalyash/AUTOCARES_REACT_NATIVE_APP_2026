@@ -10,6 +10,7 @@ import {
   LoadingState,
   PrimaryButton,
   Screen,
+  StatusBadge,
   Subtitle,
   Title,
 } from '../../../components/ui';
@@ -20,7 +21,7 @@ import { formatPKR, listUserPayments } from '../../../lib/payments';
 import { createRating, getRatingForRequest } from '../../../lib/ratings';
 import { listCustomerRequests } from '../../../lib/requests';
 import type { PaymentRecord, ServiceRequest } from '../../../lib/types';
-import { FIXED_DIAGNOSIS_FEE, STATUS_LABELS, vehicleLabel } from '../../../lib/types';
+import { FIXED_DIAGNOSIS_FEE, vehicleLabel } from '../../../lib/types';
 import { useAuth } from '../../../providers/auth-provider';
 
 export default function HistoryScreen() {
@@ -78,7 +79,7 @@ export default function HistoryScreen() {
       Alert.alert('Rating failed', rateError);
       return;
     }
-    Alert.alert('Thanks', 'Your rating was submitted.');
+    Alert.alert('Thank you', 'Your review and rating were submitted.');
     setRatingRequest(null);
     setComment('');
     load();
@@ -87,55 +88,68 @@ export default function HistoryScreen() {
   if (loading) {
     return (
       <Screen>
-        <LoadingState />
+        <LoadingState label="Loading service history…" />
       </Screen>
     );
   }
 
   return (
     <Screen>
-      <Title>Service & Payments</Title>
-      <Subtitle>Review past requests, diagnosis fees, repair charges, and receipts.</Subtitle>
+      <Title>Service History & Receipts</Title>
+      <Subtitle>Review past assistance requests, fees, and receipts.</Subtitle>
       <ErrorText message={error} />
       <ErrorText message={categoryError} />
 
+      {/* Segmented Tab Controls */}
       <View style={styles.tabBar}>
         <Pressable
           style={[styles.tabButton, activeTab === 'requests' && styles.tabButtonActive]}
           onPress={() => setActiveTab('requests')}>
           <Text style={[styles.tabText, activeTab === 'requests' && styles.tabTextActive]}>
-            Service Requests ({requests.length})
+            Requests ({requests.length})
           </Text>
         </Pressable>
         <Pressable
           style={[styles.tabButton, activeTab === 'payments' && styles.tabButtonActive]}
           onPress={() => setActiveTab('payments')}>
           <Text style={[styles.tabText, activeTab === 'payments' && styles.tabTextActive]}>
-            Payment History ({payments.length})
+            Receipts ({payments.length})
           </Text>
         </Pressable>
       </View>
 
+      {/* Rating Modal/Card */}
       {ratingRequest && (
-        <Card>
-          <Text style={{ fontWeight: '800', color: theme.colors.text, marginBottom: 8 }}>
-            Rate mechanic
-          </Text>
-          <Field value={stars} onChangeText={setStars} keyboardType="number-pad" placeholder="Stars 1-5" />
-          <Field value={comment} onChangeText={setComment} placeholder="Comment (optional)" />
-          <PrimaryButton label="Submit rating" onPress={submitRating} />
+        <Card style={styles.ratingCard}>
+          <Text style={styles.ratingTitle}>Rate Mechanic</Text>
+          <Text style={styles.ratingSub}>How was your experience?</Text>
+          <Field
+            value={stars}
+            onChangeText={setStars}
+            keyboardType="number-pad"
+            placeholder="Stars (1 to 5)"
+          />
+          <Field
+            value={comment}
+            onChangeText={setComment}
+            placeholder="Optional comments or feedback"
+            multiline
+            style={{ minHeight: 60 }}
+          />
+          <PrimaryButton label="Submit Rating" onPress={submitRating} />
           <PrimaryButton label="Cancel" onPress={() => setRatingRequest(null)} danger />
         </Card>
       )}
 
       {activeTab === 'requests' ? (
         requests.length === 0 ? (
-          <EmptyState message="No service history yet." />
+          <EmptyState message="No past roadside assistance requests found." />
         ) : (
           <FlatList
             data={requests}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.list}
             renderItem={({ item }) => {
               const diagFee = item.diagnosis_fee ?? FIXED_DIAGNOSIS_FEE;
               const repCost =
@@ -150,17 +164,17 @@ export default function HistoryScreen() {
 
               return (
                 <Pressable onPress={() => go(`/(customer)/tracking/${item.id}`)}>
-                  <Card>
+                  <Card style={styles.itemCard}>
                     <View style={styles.cardHeader}>
                       <Text style={styles.cardTitle}>
                         {problemLabels[item.problem_type]}
                         {item.is_sos ? ' · SOS' : ''}
                       </Text>
-                      <Text style={styles.statusBadge}>{STATUS_LABELS[item.status]}</Text>
+                      <StatusBadge status={item.status} />
                     </View>
 
                     {item.vehicles && (
-                      <Text style={styles.vehicleText}>{vehicleLabel(item.vehicles)}</Text>
+                      <Text style={styles.vehicleText}>🚗 {vehicleLabel(item.vehicles)}</Text>
                     )}
 
                     <View style={styles.feeBreakdown}>
@@ -168,7 +182,11 @@ export default function HistoryScreen() {
                         <Text style={styles.feeLabel}>Diagnosis Fee:</Text>
                         <Text style={styles.feeValue}>
                           {formatPKR(diagFee)}{' '}
-                          <Text style={{ color: diagPaid ? '#16a34a' : '#ca8a04', fontWeight: '800' }}>
+                          <Text
+                            style={{
+                              color: diagPaid ? theme.colors.success : theme.colors.yellowText,
+                              fontWeight: '800',
+                            }}>
                             ({diagPaid ? 'Paid' : 'Pending'})
                           </Text>
                         </Text>
@@ -179,25 +197,33 @@ export default function HistoryScreen() {
                           <Text style={styles.feeLabel}>Repair Charges:</Text>
                           <Text style={styles.feeValue}>
                             {formatPKR(repCost)}{' '}
-                            <Text style={{ color: repPaid ? '#16a34a' : '#ca8a04', fontWeight: '800' }}>
+                            <Text
+                              style={{
+                                color: repPaid ? theme.colors.success : theme.colors.yellowText,
+                                fontWeight: '800',
+                              }}>
                               ({repPaid ? 'Paid' : 'Pending'})
                             </Text>
                           </Text>
                         </View>
                       )}
 
-                      <View style={[styles.feeItem, { marginTop: 4, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 4 }]}>
-                        <Text style={[styles.feeLabel, { fontWeight: '800', color: theme.colors.text }]}>Total Payable:</Text>
-                        <Text style={[styles.feeValue, { fontWeight: '900', color: theme.colors.blue }]}>{formatPKR(total)}</Text>
+                      <View style={styles.feeTotalRow}>
+                        <Text style={styles.feeTotalLabel}>Total Amount:</Text>
+                        <Text style={styles.feeTotalValue}>{formatPKR(total)}</Text>
                       </View>
                     </View>
 
                     <Text style={styles.dateText}>
-                      {new Date(item.created_at).toLocaleDateString()} · Tap to view details & track
+                      {new Date(item.created_at).toLocaleDateString()} · Tap to track or view
                     </Text>
 
                     {item.status === 'completed' && item.mechanic_id && (
-                      <PrimaryButton label="Rate mechanic" onPress={() => setRatingRequest(item)} />
+                      <PrimaryButton
+                        variant="yellow"
+                        label="Rate Technician"
+                        onPress={() => setRatingRequest(item)}
+                      />
                     )}
                   </Card>
                 </Pressable>
@@ -213,38 +239,42 @@ export default function HistoryScreen() {
             data={payments}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.list}
             renderItem={({ item }) => (
-              <Card>
+              <Card style={styles.itemCard}>
                 <View style={styles.cardHeader}>
                   <Text style={styles.cardTitle}>
                     {item.payment_type === 'diagnosis_fee'
-                      ? 'Fixed Diagnosis Fee'
-                      : 'Mechanic Repair Charges'}
+                      ? 'Diagnosis Fee'
+                      : 'Repair Charges'}
                   </Text>
-                  <Text
+                  <View
                     style={[
                       styles.paymentBadge,
                       item.status === 'paid' ? styles.paidBadge : styles.pendingBadge,
                     ]}>
-                    {item.status.toUpperCase()}
-                  </Text>
+                    <Text
+                      style={[
+                        styles.paymentBadgeText,
+                        item.status === 'paid' ? styles.paidBadgeText : styles.pendingBadgeText,
+                      ]}>
+                      {item.status.toUpperCase()}
+                    </Text>
+                  </View>
                 </View>
 
                 <Text style={styles.paymentAmount}>{formatPKR(item.amount)}</Text>
 
                 <View style={styles.paymentDetails}>
-                  <Text style={styles.paymentInfo}>Method: Cash ({item.payment_method})</Text>
+                  <Text style={styles.paymentInfo}>Method: Cash payment</Text>
                   {item.paid_at && (
                     <Text style={styles.paymentInfo}>
-                      Paid: {new Date(item.paid_at).toLocaleString()}
+                      Date: {new Date(item.paid_at).toLocaleString()}
                     </Text>
                   )}
                   {item.mechanic?.full_name && (
                     <Text style={styles.paymentInfo}>Mechanic: {item.mechanic.full_name}</Text>
                   )}
-                  <Text style={styles.paymentInfo}>
-                    Request ID: {item.request_id.slice(0, 8)}…
-                  </Text>
                 </View>
               </Card>
             )}
@@ -259,7 +289,7 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     backgroundColor: theme.colors.surface,
-    borderRadius: 12,
+    borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
     padding: 4,
@@ -269,10 +299,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: theme.radius.sm,
   },
   tabButtonActive: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary, // Sky Blue
   },
   tabText: {
     color: theme.colors.muted,
@@ -280,8 +310,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   tabTextActive: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontWeight: '800',
+  },
+  list: {
+    paddingBottom: 24,
+  },
+  itemCard: {
+    marginBottom: 10,
+    borderRadius: theme.radius.lg,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -295,66 +332,104 @@ const styles = StyleSheet.create({
     fontSize: 15,
     flex: 1,
   },
-  statusBadge: {
-    color: theme.colors.muted,
-    fontSize: 12,
-    fontWeight: '700',
-  },
   vehicleText: {
-    color: theme.colors.muted,
+    color: theme.colors.textSecondary,
     fontSize: 13,
+    fontWeight: '600',
     marginBottom: 6,
   },
   feeBreakdown: {
-    backgroundColor: theme.colors.background,
-    borderRadius: 10,
+    backgroundColor: theme.colors.surfaceSubtle,
+    borderRadius: theme.radius.sm,
     padding: 10,
-    marginVertical: 8,
+    marginVertical: 6,
+    gap: 3,
   },
   feeItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 3,
+    marginBottom: 2,
   },
   feeLabel: {
     fontSize: 12,
     color: theme.colors.muted,
+    fontWeight: '600',
   },
   feeValue: {
     fontSize: 12,
     color: theme.colors.text,
     fontWeight: '700',
   },
+  feeTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    paddingTop: 4,
+  },
+  feeTotalLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: theme.colors.text,
+  },
+  feeTotalValue: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: theme.colors.primaryDark,
+  },
   dateText: {
     color: theme.colors.muted,
     fontSize: 11,
     marginTop: 4,
   },
+  ratingCard: {
+    marginBottom: 16,
+    borderColor: theme.colors.yellow,
+    borderWidth: 1.5,
+    backgroundColor: theme.colors.yellowLight,
+  },
+  ratingTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: theme.colors.text,
+  },
+  ratingSub: {
+    fontSize: 13,
+    color: theme.colors.muted,
+    marginBottom: 10,
+  },
   paymentAmount: {
     fontSize: 20,
     fontWeight: '900',
-    color: theme.colors.blue,
-    marginVertical: 6,
+    color: theme.colors.primaryDark,
+    marginVertical: 4,
   },
   paymentBadge: {
-    fontSize: 11,
-    fontWeight: '800',
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 6,
-    overflow: 'hidden',
+    borderRadius: theme.radius.pill,
+  },
+  paymentBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   paidBadge: {
     backgroundColor: theme.colors.successLight,
+  },
+  paidBadgeText: {
     color: theme.colors.success,
   },
   pendingBadge: {
     backgroundColor: theme.colors.yellowLight,
-    color: '#854D0E',
+  },
+  pendingBadgeText: {
+    color: theme.colors.yellowText,
   },
   paymentDetails: {
-    marginTop: 4,
     gap: 2,
+    marginTop: 4,
   },
   paymentInfo: {
     fontSize: 12,

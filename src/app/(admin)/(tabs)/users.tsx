@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { Alert, FlatList, Text } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 
+import AutoCaresLogo from '../../../components/autocares-logo';
 import {
   Card,
   EmptyState,
@@ -80,6 +81,7 @@ export default function AdminUsers() {
 
   return (
     <Screen>
+      <AutoCaresLogo size="header" style={{ marginBottom: 12, alignSelf: 'flex-start' }} />
       <Title>User management</Title>
       <Subtitle>View and manage customer and mechanic accounts.</Subtitle>
       <ErrorText message={error} />

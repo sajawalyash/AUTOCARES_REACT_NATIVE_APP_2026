@@ -213,39 +213,42 @@ export default function MechanicsScreen() {
   if (loading) {
     return (
       <Screen>
-        <LoadingState label="Finding available mechanics…" />
+        <LoadingState label="Finding available mechanics nearby…" />
       </Screen>
     );
   }
 
   return (
-    <Screen style={{ padding: 0 }}>
+    <Screen style={{ paddingHorizontal: 0 }}>
       <View style={styles.header}>
-        <Title>Available mechanics</Title>
+        <Title>Available Mechanics</Title>
         <Subtitle>
-          Live GPS, nearest-first distance, specialties, ratings, and ETA.
+          Live GPS, nearest-first distance, ratings, and estimated arrival.
         </Subtitle>
         <ErrorText message={error} />
       </View>
 
+      {/* Vehicle Type Filter Chips */}
       <View style={styles.filterSection}>
-        <Label>Filter by vehicle type</Label>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-          {vehicleFilters.map((filter) => (
-            <Pressable
-              key={filter}
-              accessibilityRole="button"
-              accessibilityState={{ selected: vehicleFilter === filter }}
-              onPress={() => setFilterSelection({
-                routeVehicleType: params.vehicleType,
-                filter,
-              })}
-              style={[styles.filterChip, vehicleFilter === filter && styles.filterChipSelected]}>
-              <Text style={[styles.filterText, vehicleFilter === filter && styles.filterTextSelected]}>
-                {filter === 'All' ? 'All vehicles' : filter}
-              </Text>
-            </Pressable>
-          ))}
+          {vehicleFilters.map((filter) => {
+            const isSelected = vehicleFilter === filter;
+            return (
+              <Pressable
+                key={filter}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isSelected }}
+                onPress={() => setFilterSelection({
+                  routeVehicleType: params.vehicleType,
+                  filter,
+                })}
+                style={[styles.filterChip, isSelected && styles.filterChipSelected]}>
+                <Text style={[styles.filterText, isSelected && styles.filterTextSelected]}>
+                  {filter === 'All' ? 'All Vehicles' : filter}
+                </Text>
+              </Pressable>
+            );
+          })}
         </ScrollView>
       </View>
 
@@ -268,89 +271,97 @@ export default function MechanicsScreen() {
               style={styles.manualField}
             />
           </View>
-          <PrimaryButton label="Search this location" onPress={() => void searchManualLocation()} />
+          <PrimaryButton label="Search Coordinates" onPress={() => void searchManualLocation()} />
         </View>
       )}
 
+      {/* Map View */}
       {coords && Platform.OS !== 'web' ? (
-        <MapView
-          ref={mapRef}
-          provider={isExpoGo ? undefined : PROVIDER_GOOGLE}
-          style={styles.map}
-          initialRegion={{
-            ...coords,
-            latitudeDelta: 0.08,
-            longitudeDelta: 0.08,
-          }}>
-          <Marker
-            coordinate={coords}
-            title="Your live location"
-            description="Location updates while this screen is open."
-            pinColor={theme.colors.blue}
-          />
-          {filteredMechanics.map((mechanic) =>
-            mechanic.latitude != null && mechanic.longitude != null ? (
-              <Marker
-                key={mechanic.user_id}
-                coordinate={{ latitude: mechanic.latitude, longitude: mechanic.longitude }}
-                title={mechanic.workshop_name || mechanic.profiles?.full_name || 'Mechanic'}
-                description={`${mechanic.distance_km.toFixed(1)} km away · ETA ~${mechanic.eta_minutes} min`}
-                pinColor={theme.colors.primaryDark}
-                onPress={() => selectMechanic(mechanic)}
-              />
-            ) : null
-          )}
-        </MapView>
+        <View style={styles.mapContainer}>
+          <MapView
+            ref={mapRef}
+            provider={isExpoGo ? undefined : PROVIDER_GOOGLE}
+            style={styles.map}
+            initialRegion={{
+              ...coords,
+              latitudeDelta: 0.08,
+              longitudeDelta: 0.08,
+            }}>
+            <Marker
+              coordinate={coords}
+              title="Your Location"
+              description="Live roadside coordinates"
+              pinColor={theme.colors.blue}
+            />
+            {filteredMechanics.map((mechanic) =>
+              mechanic.latitude != null && mechanic.longitude != null ? (
+                <Marker
+                  key={mechanic.user_id}
+                  coordinate={{ latitude: mechanic.latitude, longitude: mechanic.longitude }}
+                  title={mechanic.workshop_name || mechanic.profiles?.full_name || 'Mechanic'}
+                  description={`${mechanic.distance_km.toFixed(1)} km away · ETA ~${mechanic.eta_minutes} min`}
+                  pinColor={theme.colors.orange}
+                  onPress={() => selectMechanic(mechanic)}
+                />
+              ) : null
+            )}
+          </MapView>
+          <View style={styles.mapActions}>
+            <OutlineButton
+              label="Center on My Location"
+              onPress={() => mapRef.current?.animateToRegion({
+                ...coords,
+                latitudeDelta: 0.04,
+                longitudeDelta: 0.04,
+              })}
+            />
+          </View>
+        </View>
       ) : (
         <View style={styles.mapPlaceholder}>
           <Text style={styles.placeholderText}>
             {Platform.OS === 'web'
-              ? 'Google Maps is available in the native app. Available mechanics are listed below.'
+              ? 'Interactive map ready. Available nearby mechanics are listed below.'
               : 'Allow location access to display your live position and nearby mechanics.'}
           </Text>
         </View>
       )}
 
-      {coords && Platform.OS !== 'web' && (
-        <View style={styles.mapActions}>
-          <OutlineButton
-            label="Center map on my location"
-            onPress={() => mapRef.current?.animateToRegion({
-              ...coords,
-              latitudeDelta: 0.04,
-              longitudeDelta: 0.04,
-            })}
-          />
-        </View>
-      )}
-
+      {/* Selected Mechanic Quick Spotlight */}
       {selectedMechanic && (
         <View style={styles.detailCard}>
-          <Text style={styles.name}>
-            {selectedMechanic.workshop_name || selectedMechanic.profiles?.full_name || 'Mechanic'}
-          </Text>
+          <View style={styles.cardTopRow}>
+            <Text style={styles.name}>
+              {selectedMechanic.workshop_name || selectedMechanic.profiles?.full_name || 'Mechanic'}
+            </Text>
+            <View style={styles.ratingBadge}>
+              <Text style={styles.ratingText}>★ {Number(selectedMechanic.average_rating).toFixed(1)}</Text>
+            </View>
+          </View>
           <Text style={styles.meta}>
-            {selectedMechanic.mechanic_type ?? 'Mechanic'} · {selectedMechanic.distance_km.toFixed(1)} km · ETA ~{selectedMechanic.eta_minutes} min
+            {selectedMechanic.mechanic_type ?? 'Mechanic'} · {selectedMechanic.distance_km.toFixed(1)} km away · ETA ~{selectedMechanic.eta_minutes} min
           </Text>
-          <Text style={styles.meta}>
-            ★ {Number(selectedMechanic.average_rating).toFixed(1)} ({selectedMechanic.rating_count} reviews) · {selectedMechanic.experience_years} yrs experience
+          <Text style={styles.metaSub}>
+            Specialties: {selectedMechanic.specialties?.join(', ') || 'General roadside repairs'}
           </Text>
-          <Text style={styles.meta}>
-            {selectedMechanic.specialties?.join(', ') || 'General service'}
-          </Text>
-          <Text style={styles.availability}>Available now</Text>
+          <View style={styles.availableRow}>
+            <View style={styles.greenDot} />
+            <Text style={styles.availability}>Verified & Available Now</Text>
+          </View>
           <PrimaryButton
-            label="Request assistance"
+            variant="orange"
+            label="Request This Mechanic"
             onPress={() => requestAssistance(selectedMechanic)}
           />
         </View>
       )}
 
+      {/* Mechanics List */}
       {filteredMechanics.length === 0 ? (
         <EmptyState message={
           vehicleFilter === 'All'
-            ? 'No available, verified mechanics with a shared location were found nearby.'
-            : `No available ${vehicleFilter.toLowerCase()} mechanics with a shared location were found nearby.`
+            ? 'No verified mechanics with an active location were found nearby.'
+            : `No available ${vehicleFilter.toLowerCase()} mechanics found nearby.`
         } />
       ) : (
         <FlatList
@@ -359,26 +370,36 @@ export default function MechanicsScreen() {
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
             <View style={styles.card}>
-              <Text style={styles.name}>
-                {item.workshop_name || item.profiles?.full_name || 'Mechanic'}
-              </Text>
+              <View style={styles.cardTopRow}>
+                <Text style={styles.name}>
+                  {item.workshop_name || item.profiles?.full_name || 'Mechanic'}
+                </Text>
+                <View style={styles.ratingBadge}>
+                  <Text style={styles.ratingText}>★ {Number(item.average_rating).toFixed(1)}</Text>
+                </View>
+              </View>
+
               <Text style={styles.meta}>
-                {item.distance_km.toFixed(1)} km · ETA ~{item.eta_minutes} min · ★{' '}
-                {Number(item.average_rating).toFixed(1)} ({item.rating_count})
+                {item.distance_km.toFixed(1)} km away · ETA ~{item.eta_minutes} min ({item.rating_count} reviews)
               </Text>
-              <Text style={styles.meta}>
-                {item.mechanic_type ?? 'Mechanic'} · {item.specialties?.join(', ') || 'General service'}
+              <Text style={styles.metaSub}>
+                {item.mechanic_type ?? 'Mechanic'} · {item.specialties?.join(', ') || 'General repairs'}
               </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => selectMechanic(item)}
-                style={styles.detailsLink}>
-                <Text style={styles.detailsLinkText}>Show on map</Text>
-              </Pressable>
-              <PrimaryButton
-                label="Request this mechanic"
-                onPress={() => requestAssistance(item)}
-              />
+
+              <View style={styles.actionButtonsRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => selectMechanic(item)}
+                  style={styles.showMapButton}>
+                  <Text style={styles.showMapText}>View on Map</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => requestAssistance(item)}
+                  style={styles.requestButton}>
+                  <Text style={styles.requestButtonText}>Request</Text>
+                </Pressable>
+              </View>
             </View>
           )}
         />
@@ -391,7 +412,7 @@ export default function MechanicsScreen() {
             setSelectedMechanicId(null);
             void load();
           }}>
-          <Text style={styles.refresh}>Refresh GPS and available mechanics</Text>
+          <Text style={styles.refresh}>↻ Refresh GPS and mechanics</Text>
         </Pressable>
       </View>
     </Screen>
@@ -399,68 +420,205 @@ export default function MechanicsScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { padding: 16, paddingBottom: 0 },
-  filterSection: { paddingHorizontal: 16, marginBottom: 8 },
-  filters: { gap: 8, paddingBottom: 8 },
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  filterSection: {
+    paddingHorizontal: 16,
+    marginVertical: 8,
+  },
+  filters: {
+    gap: 8,
+    paddingBottom: 4,
+  },
   filterChip: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.surface,
-    borderRadius: 20,
-    paddingHorizontal: 14,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  filterChipSelected: { backgroundColor: theme.colors.primaryLight, borderColor: theme.colors.primary },
-  filterText: { color: theme.colors.text, fontWeight: '600', fontSize: 13 },
-  filterTextSelected: { color: theme.colors.primaryDark, fontWeight: '700' },
-  manualSection: { paddingHorizontal: 16, marginBottom: 12 },
-  map: { height: 290, marginHorizontal: 16, borderRadius: 16 },
-  mapPlaceholder: {
-    height: 140,
-    marginHorizontal: 16,
-    borderRadius: 16,
+  filterChipSelected: {
     backgroundColor: theme.colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-  },
-  placeholderText: { color: theme.colors.muted, textAlign: 'center' },
-  mapActions: { paddingHorizontal: 16, marginTop: 4 },
-  detailCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: 16,
-    borderWidth: 1.5,
     borderColor: theme.colors.primary,
-    padding: 14,
-    marginHorizontal: 16,
-    marginTop: 12,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  list: { padding: 16 },
-  card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: 16,
+  filterText: {
+    color: theme.colors.textSecondary,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  filterTextSelected: {
+    color: theme.colors.primaryDark,
+    fontWeight: '800',
+  },
+  manualSection: {
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  manualRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  manualField: {
+    flex: 1,
+  },
+  mapContainer: {
+    marginHorizontal: 16,
+    borderRadius: theme.radius.lg,
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: theme.colors.border,
-    padding: 14,
-    marginBottom: 12,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
+    marginBottom: 8,
   },
-  name: { color: theme.colors.text, fontWeight: '800', fontSize: 16 },
-  meta: { color: theme.colors.muted, marginTop: 4, fontSize: 13 },
-  availability: { color: theme.colors.success, marginTop: 8, fontWeight: '700' },
-  detailsLink: { alignSelf: 'flex-start', marginTop: 10 },
-  detailsLinkText: { color: theme.colors.primary, fontWeight: '700' },
-  refreshSection: { padding: 16 },
-  refresh: { color: theme.colors.primary, textAlign: 'center', fontWeight: '700' },
-  manualRow: { flexDirection: 'row', gap: 8 },
-  manualField: { flex: 1 },
+  map: {
+    height: 260,
+    width: '100%',
+  },
+  mapPlaceholder: {
+    height: 100,
+    marginHorizontal: 16,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.primaryLight,
+    borderWidth: 1,
+    borderColor: theme.colors.primarySubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    marginBottom: 8,
+  },
+  placeholderText: {
+    color: theme.colors.primaryDark,
+    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  mapActions: {
+    padding: 8,
+    backgroundColor: theme.colors.surface,
+  },
+  detailCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1.5,
+    borderColor: theme.colors.primary,
+    padding: 16,
+    marginHorizontal: 16,
+    marginVertical: 10,
+    ...theme.shadows.cardElevated,
+  },
+  list: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 20,
+  },
+  card: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: 16,
+    marginBottom: 12,
+    ...theme.shadows.card,
+  },
+  cardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  name: {
+    color: theme.colors.text,
+    fontWeight: '800',
+    fontSize: 16,
+    flex: 1,
+  },
+  ratingBadge: {
+    backgroundColor: theme.colors.yellowLight,
+    borderColor: theme.colors.yellow,
+    borderWidth: 1,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  ratingText: {
+    color: theme.colors.yellowText,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  meta: {
+    color: theme.colors.primaryDark,
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  metaSub: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    marginTop: 3,
+  },
+  availableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  greenDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: theme.colors.success,
+  },
+  availability: {
+    color: theme.colors.success,
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  showMapButton: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: theme.colors.primary,
+    borderRadius: theme.radius.md,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+  },
+  showMapText: {
+    color: theme.colors.primaryDark,
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  requestButton: {
+    flex: 1,
+    backgroundColor: theme.colors.orange,
+    borderRadius: theme.radius.md,
+    paddingVertical: 10,
+    alignItems: 'center',
+    ...theme.shadows.orangeButton,
+  },
+  requestButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  refreshSection: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  refresh: {
+    color: theme.colors.primaryDark,
+    fontWeight: '700',
+    fontSize: 13,
+  },
 });

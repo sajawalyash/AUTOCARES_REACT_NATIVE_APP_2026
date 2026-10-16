@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 
+import AutoCaresLogo from '../../../components/autocares-logo';
 import {
   Card,
   EmptyState,
@@ -82,6 +83,7 @@ export default function AdminVerify() {
 
   return (
     <Screen>
+      <AutoCaresLogo size="header" style={{ marginBottom: 12, alignSelf: 'flex-start' }} />
       <Title>Mechanic verification</Title>
       <Subtitle>Review mechanic identity and update application status.</Subtitle>
       <ErrorText message={error} />

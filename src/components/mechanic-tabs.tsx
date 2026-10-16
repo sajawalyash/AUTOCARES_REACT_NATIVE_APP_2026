@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import { Platform } from 'react-native';
 
 import { theme } from '../constants/autocares-theme';
 
@@ -10,17 +11,28 @@ export default function MechanicTabs() {
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.muted,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '700',
+          marginTop: -2,
+          marginBottom: Platform.OS === 'ios' ? 0 : 4,
+        },
         tabBarStyle: {
           backgroundColor: theme.colors.surface,
           borderTopColor: theme.colors.border,
+          borderTopWidth: 1,
+          height: Platform.OS === 'ios' ? 84 : 64,
+          paddingTop: 6,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 6,
+          ...theme.shadows.card,
         },
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="speedometer-outline" color={color} size={size} />
+          title: 'Overview',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'speedometer' : 'speedometer-outline'} color={color} size={22} />
           ),
         }}
       />
@@ -28,8 +40,12 @@ export default function MechanicTabs() {
         name="requests"
         options={{
           title: 'Requests',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="alert-circle-outline" color={color} size={size} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? 'alert-circle' : 'alert-circle-outline'}
+              color={color}
+              size={22}
+            />
           ),
         }}
       />
@@ -37,8 +53,8 @@ export default function MechanicTabs() {
         name="jobs"
         options={{
           title: 'My Jobs',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="construct-outline" color={color} size={size} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'construct' : 'construct-outline'} color={color} size={22} />
           ),
         }}
       />
@@ -46,8 +62,8 @@ export default function MechanicTabs() {
         name="earnings"
         options={{
           title: 'Earnings',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="cash-outline" color={color} size={size} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'cash' : 'cash-outline'} color={color} size={22} />
           ),
         }}
       />
@@ -55,8 +71,8 @@ export default function MechanicTabs() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" color={color} size={size} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'person' : 'person-outline'} color={color} size={22} />
           ),
         }}
       />

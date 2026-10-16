@@ -11,6 +11,7 @@ import {
   OutlineButton,
   PrimaryButton,
   Screen,
+  StatusBadge,
   Subtitle,
   Title,
 } from '../../../components/ui';
@@ -28,7 +29,7 @@ import {
   upsertMechanicLocation,
 } from '../../../lib/requests';
 import type { RequestStatus, ServiceRequest } from '../../../lib/types';
-import { FIXED_DIAGNOSIS_FEE, STATUS_LABELS, vehicleLabel } from '../../../lib/types';
+import { FIXED_DIAGNOSIS_FEE, vehicleLabel } from '../../../lib/types';
 import { useAuth } from '../../../providers/auth-provider';
 
 export default function JobDetailScreen() {
@@ -88,8 +89,8 @@ export default function JobDetailScreen() {
     shareLocationOnce();
     timer.current = setInterval(shareLocationOnce, 15000);
     Alert.alert(
-      'Location sharing on',
-      'Your live location is shared with the customer while this job is active. They consented by submitting a roadside request.'
+      'Location Sharing Active',
+      'Your live GPS coordinates are being shared with the customer while this job is active.'
     );
   }
 
@@ -166,7 +167,7 @@ export default function JobDetailScreen() {
   if (loading) {
     return (
       <Screen>
-        <LoadingState />
+        <LoadingState label="Loading job details…" />
       </Screen>
     );
   }
@@ -174,7 +175,7 @@ export default function JobDetailScreen() {
   if (!job) {
     return (
       <Screen>
-        <ErrorText message={error ?? 'Job not found'} />
+        <ErrorText message={error ?? 'Job not found.'} />
       </Screen>
     );
   }
@@ -187,54 +188,70 @@ export default function JobDetailScreen() {
 
   return (
     <Screen>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <Title>{problemLabels[job.problem_type]}</Title>
-        <Subtitle>
-          {STATUS_LABELS[job.status]} · {job.profiles?.full_name ?? 'Customer'}
-        </Subtitle>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <View style={styles.topStatusRow}>
+          <View style={{ flex: 1 }}>
+            <Title>{problemLabels[job.problem_type]}</Title>
+            <Subtitle>Customer: {job.profiles?.full_name ?? 'Driver'}</Subtitle>
+          </View>
+          <StatusBadge status={job.status} />
+        </View>
+
         <ErrorText message={error} />
         <ErrorText message={categoryError} />
 
-        <Card>
-          <Text style={{ color: theme.colors.muted }}>
+        {/* Customer & Incident Details */}
+        <Card style={styles.customerCard}>
+          <Text style={styles.detailTitle}>Customer Details</Text>
+          <Text style={styles.detailLine}>
             Phone: {job.profiles?.phone || 'Not provided'}
           </Text>
-          <Text style={{ color: theme.colors.muted, marginTop: 4 }}>
-            Vehicle: {job.vehicles ? vehicleLabel(job.vehicles) : 'N/A'}
+          <Text style={styles.detailLine}>
+            Vehicle: {job.vehicles ? vehicleLabel(job.vehicles) : 'Not specified'}
           </Text>
-          <Text style={{ color: theme.colors.muted, marginTop: 4 }}>
-            {job.description || 'No extra details'}
-          </Text>
+          {job.description ? (
+            <Text style={styles.detailNote}>Note: &ldquo;{job.description}&rdquo;</Text>
+          ) : null}
         </Card>
 
-        <OutlineButton label="Navigate to customer" onPress={openNavigation} />
-        {job.profiles?.phone ? (
+        {/* Action Buttons */}
+        <View style={styles.actionsRow}>
+          <OutlineButton label="Navigate via Google Maps" onPress={openNavigation} />
+          {job.profiles?.phone ? (
+            <OutlineButton
+              label={`Call Customer (${job.profiles.phone})`}
+              onPress={() => Linking.openURL(`tel:${job.profiles?.phone}`)}
+            />
+          ) : null}
           <OutlineButton
-            label="Call customer"
-            onPress={() => Linking.openURL(`tel:${job.profiles?.phone}`)}
+            label={sharing ? 'Stop GPS Broadcast' : 'Broadcast Live GPS to Customer'}
+            onPress={sharing ? stopSharing : startSharing}
           />
-        ) : null}
-        <OutlineButton
-          label={sharing ? 'Stop location sharing' : 'Share live location'}
-          onPress={sharing ? stopSharing : startSharing}
-        />
+        </View>
 
         {/* Diagnostic & Billing Breakdown */}
         <Card style={styles.billingCard}>
-          <Text style={styles.billingTitle}>Fee & Charges Management</Text>
-          <Text style={styles.billingSub}>All payments must be collected in cash</Text>
+          <View style={styles.billingHeader}>
+            <Text style={styles.billingTitle}>Fee & Charges Management</Text>
+            <View style={styles.cashBadge}>
+              <Text style={styles.cashBadgeText}>CASH</Text>
+            </View>
+          </View>
+          <Text style={styles.billingSub}>Collect all amounts directly in cash</Text>
 
           {/* Fixed Diagnosis Fee Row */}
           <View style={styles.billRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.billItem}>Fixed Diagnosis Fee</Text>
-              <Text style={styles.billHint}>Standard fee applied to all requests</Text>
+              <Text style={styles.billItem}>Standard Diagnosis Fee</Text>
+              <Text style={styles.billHint}>Fixed arrival & inspection charge</Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={styles.billAmount}>{formatPKR(diagnosisFee)}</Text>
-              <Text style={[styles.statusBadge, diagnosisPaid ? styles.paidBadge : styles.pendingBadge]}>
-                {diagnosisPaid ? 'Paid' : 'Pending'}
-              </Text>
+              <View style={[styles.statusPill, diagnosisPaid ? styles.paidPill : styles.pendingPill]}>
+                <Text style={[styles.statusPillText, diagnosisPaid ? styles.paidPillText : styles.pendingPillText]}>
+                  {diagnosisPaid ? 'Paid' : 'Pending'}
+                </Text>
+              </View>
             </View>
           </View>
 
@@ -258,29 +275,36 @@ export default function JobDetailScreen() {
           />
 
           <PrimaryButton
-            label={submittingCharges ? 'Submitting…' : 'Submit repair charges to customer'}
+            variant="orange"
+            label={submittingCharges ? 'Submitting…' : 'Submit Repair Charges to Customer'}
             onPress={handleSubmitCharges}
             disabled={submittingCharges}
           />
 
           {job.repair_charges != null && (
-            <View style={[styles.billRow, { marginTop: 12 }]}>
+            <View style={[styles.billRow, { marginTop: 14 }]}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.billItem}>Submitted Repair Status</Text>
-                <Text style={styles.billHint}>Visible live on customer dashboard</Text>
+                <Text style={styles.billItem}>Submitted Repair Amount</Text>
+                <Text style={styles.billHint}>Visible live to the customer</Text>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
                 <Text style={styles.billAmount}>{formatPKR(job.repair_charges)}</Text>
-                <Text style={[styles.statusBadge, repairPaid ? styles.paidBadge : styles.pendingBadge]}>
-                  {repairPaid ? 'Paid' : 'Pending'}
-                </Text>
+                <View style={[styles.statusPill, repairPaid ? styles.paidPill : styles.pendingPill]}>
+                  <Text style={[styles.statusPillText, repairPaid ? styles.paidPillText : styles.pendingPillText]}>
+                    {repairPaid ? 'Paid' : 'Pending'}
+                  </Text>
+                </View>
               </View>
             </View>
           )}
 
           {job.repair_charges != null && !repairPaid && (
             <OutlineButton
-              label={confirmingPayment ? 'Confirming…' : `Confirm Repair Cash Received (${formatPKR(job.repair_charges)})`}
+              label={
+                confirmingPayment
+                  ? 'Confirming…'
+                  : `Confirm Cash Repair Received (${formatPKR(job.repair_charges)})`
+              }
               onPress={() => handleConfirmPayment('repair_charge')}
               disabled={confirmingPayment}
             />
@@ -290,50 +314,113 @@ export default function JobDetailScreen() {
 
           {/* Grand Total */}
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total Payable by Customer</Text>
+            <Text style={styles.totalLabel}>Total Customer Bill</Text>
             <Text style={styles.totalAmount}>{formatPKR(totalPayable)}</Text>
           </View>
         </Card>
 
-        <Label>Diagnosis notes</Label>
+        {/* Diagnosis & Work Notes */}
+        <Label>Diagnosis Notes</Label>
         <Field value={diagnosis} onChangeText={setDiagnosis} multiline style={{ minHeight: 70 }} />
 
-        <Label>Work performed</Label>
+        <Label>Work Performed</Label>
         <Field value={work} onChangeText={setWork} multiline style={{ minHeight: 70 }} />
 
-        {job.status === 'accepted' && (
-          <PrimaryButton label="Mark en route" onPress={() => setStatus('en_route')} />
-        )}
-        {job.status === 'en_route' && (
-          <PrimaryButton label="Start work" onPress={() => setStatus('in_progress')} />
-        )}
-        {['accepted', 'en_route', 'in_progress'].includes(job.status) && (
-          <PrimaryButton label="Complete job" onPress={() => setStatus('completed')} />
-        )}
+        {/* Job Workflow Controls (Sky Blue Primary) */}
+        <View style={styles.workflowSection}>
+          {job.status === 'accepted' && (
+            <PrimaryButton label="Mark En Route 🚗" onPress={() => setStatus('en_route')} />
+          )}
+          {job.status === 'en_route' && (
+            <PrimaryButton label="Start Work on Vehicle 🔧" onPress={() => setStatus('in_progress')} />
+          )}
+          {['accepted', 'en_route', 'in_progress'].includes(job.status) && (
+            <PrimaryButton
+              label="Complete Job ✓"
+              onPress={() => setStatus('completed')}
+            />
+          )}
+        </View>
       </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  scroll: {
+    paddingBottom: 36,
+  },
+  topStatusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  customerCard: {
+    padding: 16,
+    marginBottom: 10,
+  },
+  detailTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: theme.colors.text,
+    marginBottom: 6,
+  },
+  detailLine: {
+    color: theme.colors.muted,
+    fontSize: 13,
+    marginBottom: 3,
+  },
+  detailNote: {
+    color: theme.colors.textSecondary,
+    fontSize: 13,
+    fontStyle: 'italic',
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  actionsRow: {
+    gap: 4,
+    marginBottom: 12,
+  },
   billingCard: {
     backgroundColor: theme.colors.surface,
     borderColor: theme.colors.border,
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: theme.radius.lg,
+    padding: 18,
     marginVertical: 12,
+    ...theme.shadows.cardElevated,
+  },
+  billingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   billingTitle: {
     fontSize: 17,
     fontWeight: '800',
     color: theme.colors.text,
   },
+  cashBadge: {
+    backgroundColor: theme.colors.yellowLight,
+    borderColor: theme.colors.yellow,
+    borderWidth: 1,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  cashBadgeText: {
+    color: theme.colors.yellowText,
+    fontSize: 10,
+    fontWeight: '800',
+  },
   billingSub: {
-    fontSize: 12,
+    fontSize: 13,
     color: theme.colors.muted,
     marginTop: 2,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   billRow: {
     flexDirection: 'row',
@@ -352,26 +439,35 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   billAmount: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
     color: theme.colors.text,
   },
-  statusBadge: {
-    fontSize: 11,
-    fontWeight: '700',
+  statusPill: {
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 6,
-    marginTop: 4,
-    overflow: 'hidden',
+    borderRadius: theme.radius.pill,
+    marginTop: 3,
   },
-  paidBadge: {
+  paidPill: {
     backgroundColor: theme.colors.successLight,
-    color: theme.colors.success,
   },
-  pendingBadge: {
+  paidPillText: {
+    color: theme.colors.success,
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  pendingPill: {
     backgroundColor: theme.colors.yellowLight,
-    color: '#854D0E',
+  },
+  pendingPillText: {
+    color: theme.colors.yellowText,
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: '800',
   },
   divider: {
     height: 1,
@@ -384,13 +480,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   totalLabel: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
     color: theme.colors.text,
   },
   totalAmount: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '900',
-    color: theme.colors.blue,
+    color: theme.colors.primaryDark,
+  },
+  workflowSection: {
+    marginTop: 10,
+    gap: 8,
   },
 });

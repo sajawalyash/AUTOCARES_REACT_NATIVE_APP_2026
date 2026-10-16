@@ -1,8 +1,9 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, Switch, Text } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import {
+  Card,
   Field,
   Label,
   OutlineButton,
@@ -10,7 +11,6 @@ import {
   Screen,
   Subtitle,
   Title,
-  Card,
 } from '../../../components/ui';
 import { theme } from '../../../constants/autocares-theme';
 import { getCurrentCoords } from '../../../lib/location';
@@ -65,47 +65,105 @@ export default function MechanicProfileScreen() {
     });
     setSaving(false);
     if (error) Alert.alert('Save failed', error);
-    else Alert.alert('Saved', 'Mechanic profile updated.');
+    else Alert.alert('Saved', 'Mechanic profile and live location updated.');
   }
+
+  const isApproved = verification === 'approved';
 
   return (
     <Screen>
-      <ScrollView>
-        <Title>Mechanic profile</Title>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <Title>Mechanic Profile</Title>
         <Subtitle>{`${profile?.full_name ?? 'Technician'} · ${user?.email ?? ''}`}</Subtitle>
 
+        {/* Verification Status Card */}
+        <Card style={styles.statusCard}>
+          <View style={styles.statusRow}>
+            <View>
+              <Text style={styles.statusLabel}>Verification Status</Text>
+              <Text style={styles.statusSub}>
+                {isApproved
+                  ? 'Your profile is approved and active.'
+                  : 'Pending admin review before accepting new jobs.'}
+              </Text>
+            </View>
+            <View style={[styles.badge, isApproved ? styles.approvedBadge : styles.pendingBadge]}>
+              <Text style={[styles.badgeText, isApproved ? styles.approvedText : styles.pendingText]}>
+                {verification.toUpperCase()}
+              </Text>
+            </View>
+          </View>
+        </Card>
+
+        {/* Available Toggle */}
+        <Card style={styles.toggleCard}>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={styles.toggleTitle}>Available for Jobs</Text>
+            <Text style={styles.toggleSub}>Appear live on customer map & receive requests</Text>
+          </View>
+          <Switch
+            value={available}
+            onValueChange={setAvailable}
+            trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+            thumbColor={available ? '#FFFFFF' : '#FFFFFF'}
+          />
+        </Card>
+
+        {/* Profile Inputs */}
         <Card>
-          <Text style={{ fontWeight: '800', color: theme.colors.text }}>
-            Verification: {verification}
-          </Text>
-          <Text style={{ color: theme.colors.muted, marginTop: 4 }}>
-            Admins approve applications before you can accept jobs.
-          </Text>
+          <Label>Workshop / Business Name</Label>
+          <Field value={workshop} onChangeText={setWorkshop} placeholder="e.g. Master Auto Works" />
+
+          <Label>Specialties (comma separated)</Label>
+          <Field
+            value={specialties}
+            onChangeText={setSpecialties}
+            placeholder="battery, tires, brakes, engine, towing"
+          />
+
+          <Label>Years of Experience</Label>
+          <Field
+            value={experience}
+            onChangeText={setExperience}
+            keyboardType="number-pad"
+            placeholder="e.g. 5"
+          />
+
+          <Label>Service Radius (km)</Label>
+          <Field
+            value={radius}
+            onChangeText={setRadius}
+            keyboardType="decimal-pad"
+            placeholder="15"
+          />
+
+          <Label>Working Hours</Label>
+          <Field value={hours} onChangeText={setHours} placeholder="09:00 - 18:00" />
+
+          <Label>About You / Bio</Label>
+          <Field
+            value={bio}
+            onChangeText={setBio}
+            multiline
+            placeholder="Brief description of your expertise and equipment"
+            style={{ minHeight: 70 }}
+          />
+
+          <PrimaryButton
+            label={saving ? 'Updating Profile…' : 'Save Profile & GPS Location'}
+            onPress={save}
+            disabled={saving}
+          />
         </Card>
 
-        <Label>Workshop name</Label>
-        <Field value={workshop} onChangeText={setWorkshop} />
-        <Label>Specialties (comma separated)</Label>
-        <Field value={specialties} onChangeText={setSpecialties} placeholder="battery, tires, towing" />
-        <Label>Experience (years)</Label>
-        <Field value={experience} onChangeText={setExperience} keyboardType="number-pad" />
-        <Label>Service radius (km)</Label>
-        <Field value={radius} onChangeText={setRadius} keyboardType="decimal-pad" />
-        <Label>Working hours</Label>
-        <Field value={hours} onChangeText={setHours} />
-        <Label>Bio</Label>
-        <Field value={bio} onChangeText={setBio} multiline style={{ minHeight: 70 }} />
+        <OutlineButton
+          label="Reviews & Performance"
+          onPress={() => router.push('/(mechanic)/reviews')}
+        />
+        <OutlineButton label="Contact Support" onPress={() => router.push('/(mechanic)/support')} />
 
-        <Card style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ fontWeight: '700', color: theme.colors.text }}>Available for jobs</Text>
-          <Switch value={available} onValueChange={setAvailable} />
-        </Card>
-
-        <PrimaryButton label={saving ? 'Saving…' : 'Save profile + location'} onPress={save} disabled={saving} />
-        <OutlineButton label="Reviews & performance" onPress={() => router.push('/(mechanic)/reviews')} />
-        <OutlineButton label="Support" onPress={() => router.push('/(mechanic)/support')} />
         <PrimaryButton
-          label="Sign out"
+          label="Sign Out"
           danger
           onPress={async () => {
             await signOut();
@@ -116,3 +174,69 @@ export default function MechanicProfileScreen() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  scroll: {
+    paddingBottom: 36,
+  },
+  statusCard: {
+    marginBottom: 12,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statusLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: theme.colors.text,
+  },
+  statusSub: {
+    fontSize: 12,
+    color: theme.colors.muted,
+    marginTop: 2,
+    maxWidth: 220,
+  },
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  approvedBadge: {
+    backgroundColor: theme.colors.successLight,
+    borderColor: '#BBF7D0',
+  },
+  approvedText: {
+    color: theme.colors.success,
+  },
+  pendingBadge: {
+    backgroundColor: theme.colors.yellowLight,
+    borderColor: theme.colors.yellow,
+  },
+  pendingText: {
+    color: theme.colors.yellowText,
+  },
+  toggleCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  toggleTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: theme.colors.text,
+  },
+  toggleSub: {
+    fontSize: 12,
+    color: theme.colors.muted,
+    marginTop: 2,
+  },
+});

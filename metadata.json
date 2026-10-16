@@ -1,0 +1,8 @@
+{
+  "name": "AutoCares Roadside Assistance",
+  "description": "On-demand roadside assistance and vehicle diagnostics platform connecting drivers with mechanics.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

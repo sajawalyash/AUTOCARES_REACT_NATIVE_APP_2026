@@ -62,26 +62,29 @@ export default function EarningsScreen() {
   if (loading) {
     return (
       <Screen>
-        <LoadingState />
+        <LoadingState label="Loading earnings data…" />
       </Screen>
     );
   }
 
   return (
     <Screen>
-      <Title>Earnings & Transactions</Title>
-      <Subtitle>Breakdown of diagnosis fees, repair charges, and payment history.</Subtitle>
+      <Title>Earnings & Ledger</Title>
+      <Subtitle>Breakdown of diagnosis fees, repair charges, and payment transactions.</Subtitle>
       <ErrorText message={categoryError} />
 
+      {/* Summary Highlights Card */}
       <Card style={styles.summaryCard}>
+        <Text style={styles.totalLabel}>Total Completed Earnings</Text>
         <Text style={styles.totalAmountText}>{formatPKR(stats.total)}</Text>
-        <Text style={styles.totalSub}>Total recorded earnings (completed jobs)</Text>
+        <Text style={styles.totalSub}>All cash amounts collected on-site</Text>
 
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
             <Text style={styles.statLabel}>Diagnosis Fees</Text>
             <Text style={styles.statVal}>{formatPKR(stats.diagTotal)}</Text>
           </View>
+          <View style={styles.statDivider} />
           <View style={styles.statBox}>
             <Text style={styles.statLabel}>Repair Charges</Text>
             <Text style={styles.statVal}>{formatPKR(stats.repairTotal)}</Text>
@@ -89,6 +92,7 @@ export default function EarningsScreen() {
         </View>
       </Card>
 
+      {/* Segmented Tab Controls */}
       <View style={styles.tabBar}>
         <Pressable
           style={[styles.tabButton, activeTab === 'jobs' && styles.tabButtonActive]}
@@ -101,24 +105,25 @@ export default function EarningsScreen() {
           style={[styles.tabButton, activeTab === 'payments' && styles.tabButtonActive]}
           onPress={() => setActiveTab('payments')}>
           <Text style={[styles.tabText, activeTab === 'payments' && styles.tabTextActive]}>
-            Payment History ({payments.length})
+            Receipts ({payments.length})
           </Text>
         </Pressable>
       </View>
 
       {activeTab === 'jobs' ? (
         jobs.length === 0 ? (
-          <EmptyState message="No completed paid jobs yet." />
+          <EmptyState message="No completed paid jobs recorded yet." />
         ) : (
           <FlatList
             data={jobs}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.list}
             renderItem={({ item }) => {
               const diag = item.diagnosis_fee ?? FIXED_DIAGNOSIS_FEE;
               const rep = Number(item.repair_charges ?? item.final_cost ?? 0);
               return (
-                <Card>
+                <Card style={styles.itemCard}>
                   <View style={styles.cardHeader}>
                     <Text style={styles.jobTitle}>{problemLabels[item.problem_type]}</Text>
                     <Text style={styles.jobTotal}>{formatPKR(diag + rep)}</Text>
@@ -130,18 +135,15 @@ export default function EarningsScreen() {
 
                   <View style={styles.feeBreakdown}>
                     <Text style={styles.feeRowText}>
-                      Diagnosis Fee: {formatPKR(diag)} · Status: {item.diagnosis_payment_status ?? 'pending'}
+                      Diagnosis Fee: {formatPKR(diag)} · {item.diagnosis_payment_status === 'paid' ? 'Paid' : 'Pending'}
                     </Text>
                     <Text style={styles.feeRowText}>
-                      Repair Charges: {formatPKR(rep)} · Status: {item.repair_payment_status ?? 'pending'}
+                      Repair Charges: {formatPKR(rep)} · {item.repair_payment_status === 'paid' ? 'Paid' : 'Pending'}
                     </Text>
                   </View>
 
                   <Text style={styles.dateText}>
-                    Completed:{' '}
-                    {item.completed_at
-                      ? new Date(item.completed_at).toLocaleDateString()
-                      : 'Completed'}
+                    Completed: {item.completed_at ? new Date(item.completed_at).toLocaleDateString() : 'Done'}
                   </Text>
                 </Card>
               );
@@ -156,38 +158,42 @@ export default function EarningsScreen() {
             data={payments}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.list}
             renderItem={({ item }) => (
-              <Card>
+              <Card style={styles.itemCard}>
                 <View style={styles.cardHeader}>
                   <Text style={styles.jobTitle}>
                     {item.payment_type === 'diagnosis_fee'
-                      ? 'Fixed Diagnosis Fee'
-                      : 'Mechanic Repair Charges'}
+                      ? 'Diagnosis Fee'
+                      : 'Repair Charges'}
                   </Text>
-                  <Text
+                  <View
                     style={[
                       styles.paymentBadge,
                       item.status === 'paid' ? styles.paidBadge : styles.pendingBadge,
                     ]}>
-                    {item.status.toUpperCase()}
-                  </Text>
+                    <Text
+                      style={[
+                        styles.paymentBadgeText,
+                        item.status === 'paid' ? styles.paidBadgeText : styles.pendingBadgeText,
+                      ]}>
+                      {item.status.toUpperCase()}
+                    </Text>
+                  </View>
                 </View>
 
                 <Text style={styles.transAmount}>{formatPKR(item.amount)}</Text>
 
                 <View style={styles.transDetails}>
-                  <Text style={styles.transInfo}>Method: Cash ({item.payment_method})</Text>
+                  <Text style={styles.transInfo}>Method: Cash payment</Text>
                   {item.customer?.full_name && (
                     <Text style={styles.transInfo}>Customer: {item.customer.full_name}</Text>
                   )}
                   {item.paid_at && (
                     <Text style={styles.transInfo}>
-                      Paid: {new Date(item.paid_at).toLocaleString()}
+                      Received: {new Date(item.paid_at).toLocaleString()}
                     </Text>
                   )}
-                  <Text style={styles.transInfo}>
-                    Request ID: {item.request_id.slice(0, 8)}…
-                  </Text>
                 </View>
               </Card>
             )}
@@ -200,45 +206,63 @@ export default function EarningsScreen() {
 
 const styles = StyleSheet.create({
   summaryCard: {
-    padding: 16,
+    padding: 20,
     marginBottom: 16,
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.colors.surface,
+    ...theme.shadows.cardElevated,
+  },
+  totalLabel: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
   },
   totalAmountText: {
-    color: theme.colors.text,
+    color: theme.colors.primaryDark,
     fontWeight: '900',
-    fontSize: 26,
+    fontSize: 28,
+    marginTop: 2,
+    letterSpacing: -0.5,
   },
   totalSub: {
     color: theme.colors.muted,
     fontSize: 13,
     marginTop: 2,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   statsRow: {
     flexDirection: 'row',
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
-    paddingTop: 10,
-    gap: 12,
+    paddingTop: 12,
+    alignItems: 'center',
   },
   statBox: {
     flex: 1,
+  },
+  statDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: theme.colors.border,
+    marginHorizontal: 12,
   },
   statLabel: {
     fontSize: 11,
     color: theme.colors.muted,
     fontWeight: '700',
+    textTransform: 'uppercase',
   },
   statVal: {
-    fontSize: 14,
-    color: theme.colors.blue,
+    fontSize: 16,
+    color: theme.colors.text,
     fontWeight: '800',
     marginTop: 2,
   },
   tabBar: {
     flexDirection: 'row',
     backgroundColor: theme.colors.surface,
-    borderRadius: 12,
+    borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
     padding: 4,
@@ -248,10 +272,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: theme.radius.sm,
   },
   tabButtonActive: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary, // Sky Blue
   },
   tabText: {
     color: theme.colors.muted,
@@ -259,8 +283,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   tabTextActive: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontWeight: '800',
+  },
+  list: {
+    paddingBottom: 24,
+  },
+  itemCard: {
+    marginBottom: 10,
+    borderRadius: theme.radius.lg,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -276,8 +307,8 @@ const styles = StyleSheet.create({
   },
   jobTotal: {
     fontWeight: '900',
-    color: theme.colors.blue,
-    fontSize: 15,
+    color: theme.colors.primaryDark,
+    fontSize: 16,
   },
   customerName: {
     color: theme.colors.muted,
@@ -285,15 +316,16 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   feeBreakdown: {
-    backgroundColor: theme.colors.background,
-    borderRadius: 8,
-    padding: 8,
+    backgroundColor: theme.colors.surfaceSubtle,
+    borderRadius: theme.radius.sm,
+    padding: 10,
     marginVertical: 4,
-    gap: 2,
+    gap: 3,
   },
   feeRowText: {
     fontSize: 12,
-    color: theme.colors.text,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
   },
   dateText: {
     color: theme.colors.muted,
@@ -303,24 +335,30 @@ const styles = StyleSheet.create({
   transAmount: {
     fontSize: 18,
     fontWeight: '900',
-    color: theme.colors.blue,
+    color: theme.colors.primaryDark,
     marginVertical: 4,
   },
   paymentBadge: {
-    fontSize: 11,
-    fontWeight: '800',
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 6,
-    overflow: 'hidden',
+    borderRadius: theme.radius.pill,
+  },
+  paymentBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   paidBadge: {
     backgroundColor: theme.colors.successLight,
+  },
+  paidBadgeText: {
     color: theme.colors.success,
   },
   pendingBadge: {
     backgroundColor: theme.colors.yellowLight,
-    color: '#854D0E',
+  },
+  pendingBadgeText: {
+    color: theme.colors.yellowText,
   },
   transDetails: {
     gap: 2,

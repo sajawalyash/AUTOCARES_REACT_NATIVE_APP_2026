@@ -1,26 +1,30 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
 import '@/global.css';
 
 import { Platform } from 'react-native';
+import { theme } from './autocares-theme';
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: theme.colors.text,
+    background: theme.colors.background,
+    backgroundElement: theme.colors.surfaceSubtle,
+    backgroundSelected: theme.colors.primaryLight,
+    textSecondary: theme.colors.muted,
+    primary: theme.colors.primary,
+    yellow: theme.colors.yellow,
+    orange: theme.colors.orange,
+    border: theme.colors.border,
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: '#F8FAFC',
+    background: '#0F172A',
+    backgroundElement: '#1E293B',
+    backgroundSelected: '#0369A1',
+    textSecondary: '#94A3B8',
+    primary: theme.colors.primary,
+    yellow: theme.colors.yellow,
+    orange: theme.colors.orange,
+    border: '#334155',
   },
 } as const;
 
@@ -28,13 +32,9 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {
@@ -52,14 +52,16 @@ export const Fonts = Platform.select({
 });
 
 export const Spacing = {
-  half: 2,
-  one: 4,
-  two: 8,
-  three: 16,
-  four: 24,
-  five: 32,
-  six: 64,
+  half: theme.spacing.xs,
+  one: theme.spacing.xs,
+  two: theme.spacing.sm,
+  three: theme.spacing.lg,
+  four: theme.spacing.xxl,
+  five: theme.spacing.xxxl,
+  six: 48,
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+export const MaxContentWidth = theme.layout.maxContentWidth;
+
+export { theme };
