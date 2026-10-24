@@ -1,3 +1,4 @@
+import { Avatar } from '../../../components/avatar';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -9,9 +10,11 @@ import { getMechanicProfile } from '../../../lib/mechanics';
 import { listMechanicJobs, listPendingRequests } from '../../../lib/requests';
 import type { MechanicProfile, ServiceRequest } from '../../../lib/types';
 import { useAuth } from '../../../providers/auth-provider';
+import { useNotifications } from '../../../providers/notification-provider';
 
 export default function MechanicHome() {
   const { user, profile } = useAuth();
+  const { unreadCount } = useNotifications();
   const [mechanic, setMechanic] = useState<MechanicProfile | null>(null);
   const [pending, setPending] = useState<ServiceRequest[]>([]);
   const [jobs, setJobs] = useState<ServiceRequest[]>([]);
@@ -91,10 +94,16 @@ export default function MechanicHome() {
           <AutoCaresLogo size="header" />
         </View>
 
-        {/* Header Block */}
+        {/* Header Block with Avatar */}
         <View style={styles.headerRow}>
-          <View style={{ flex: 1 }}>
-            <Title>Mechanic Console</Title>
+          <Avatar
+            url={profile?.avatar_url}
+            name={mechanic?.workshop_name || profile?.full_name}
+            size={48}
+            onPress={() => router.push('/(mechanic)/(tabs)/profile')}
+          />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Title>{mechanic?.workshop_name || profile?.full_name || 'Mechanic Console'}</Title>
             <Subtitle>{profile?.full_name ?? 'Certified Technician'}</Subtitle>
           </View>
           <View style={[styles.statusBadge, isApproved ? styles.approvedBadge : styles.pendingBadge]}>
@@ -141,7 +150,7 @@ export default function MechanicHome() {
             onPress={() => router.push('/(mechanic)/reviews')}
           />
           <OutlineButton
-            label="Job Notifications"
+            label={unreadCount > 0 ? `Job Notifications (${unreadCount} new)` : 'Job Notifications'}
             onPress={() => router.push('/(mechanic)/notifications')}
           />
         </View>

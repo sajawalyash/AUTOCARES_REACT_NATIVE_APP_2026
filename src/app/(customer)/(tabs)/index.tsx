@@ -1,3 +1,4 @@
+import { Avatar } from '../../../components/avatar';
 import { Ionicons } from '@expo/vector-icons';
 import { Link, router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -13,58 +14,107 @@ import { listCustomerRequests } from '../../../lib/requests';
 import type { ServiceRequest } from '../../../lib/types';
 import { FIXED_DIAGNOSIS_FEE } from '../../../lib/types';
 import { useAuth } from '../../../providers/auth-provider';
+import { useNotifications } from '../../../providers/notification-provider';
 
-const shortcuts = [
+type ShortcutItem = {
+  href: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  desc: string;
+  badge?: string;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  badgeBg?: string;
+  badgeText?: string;
+  badgeBorder?: string;
+  isSos?: boolean;
+};
+
+const shortcuts: ShortcutItem[] = [
   {
     href: '/(customer)/request',
-    icon: 'construct-outline' as const,
+    icon: 'construct',
     title: 'Request Help',
-    desc: 'Instant roadside service',
+    desc: 'Instant roadside repair',
     badge: 'Popular',
-    color: theme.colors.primary,
+    color: '#0284C7',
+    bgColor: '#E0F2FE',
+    borderColor: '#BAE6FD',
+    badgeBg: '#E0F2FE',
+    badgeText: '#0369A1',
+    badgeBorder: '#BAE6FD',
   },
   {
     href: '/(customer)/(tabs)/mechanics',
-    icon: 'map-outline' as const,
+    icon: 'navigate',
     title: 'Find Mechanics',
-    desc: 'Live GPS & nearby list',
-    color: theme.colors.primary,
-  },
-  {
-    href: '/(customer)/vehicles',
-    icon: 'car-sport-outline' as const,
-    title: 'My Vehicles',
-    desc: 'Garage & diagnostics',
-    color: theme.colors.primary,
+    desc: 'Live GPS & nearby shops',
+    color: '#0D9488',
+    bgColor: '#CCFBF1',
+    borderColor: '#99F6E4',
+    badgeBg: '#CCFBF1',
+    badgeText: '#0F766E',
+    badgeBorder: '#99F6E4',
   },
   {
     href: '/(customer)/(tabs)/ai-help',
-    icon: 'chatbubble-ellipses-outline' as const,
+    icon: 'sparkles',
     title: 'AI Assistant',
-    desc: 'Symptoms & OBD codes',
+    desc: 'Symptom & engine triage',
     badge: 'Smart',
-    color: theme.colors.orange,
+    color: '#D97706',
+    bgColor: '#FEF3C7',
+    borderColor: '#FDE68A',
+    badgeBg: '#FEF3C7',
+    badgeText: '#B45309',
+    badgeBorder: '#FDE68A',
+  },
+  {
+    href: '/(customer)/obd-ii',
+    icon: 'hardware-chip',
+    title: 'OBD-II Scanner',
+    desc: 'Bluetooth ECU diagnostic',
+    badge: 'Live',
+    color: '#7C3AED',
+    bgColor: '#EDE9FE',
+    borderColor: '#DDD6FE',
+    badgeBg: '#EDE9FE',
+    badgeText: '#6D28D9',
+    badgeBorder: '#DDD6FE',
+  },
+  {
+    href: '/(customer)/vehicles',
+    icon: 'car-sport',
+    title: 'My Vehicles',
+    desc: 'Garage & maintenance',
+    color: '#2563EB',
+    bgColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+    badgeBg: '#EFF6FF',
+    badgeText: '#1D4ED8',
+    badgeBorder: '#BFDBFE',
   },
   {
     href: '/(customer)/sos',
-    icon: 'shield-checkmark-outline' as const,
+    icon: 'shield-checkmark',
     title: 'Emergency SOS',
     desc: 'Urgent priority dispatch',
+    badge: '24/7 SOS',
+    color: '#DC2626',
+    bgColor: '#FEE2E2',
+    borderColor: '#FECACA',
+    badgeBg: '#FEE2E2',
+    badgeText: '#B91C1C',
+    badgeBorder: '#FECACA',
     isSos: true,
-    color: theme.colors.danger,
-  },
-  {
-    href: '/(customer)/notifications',
-    icon: 'notifications-outline' as const,
-    title: 'Notifications',
-    desc: 'Updates & alerts',
-    color: theme.colors.primary,
   },
 ];
 
 export default function CustomerHome() {
   const insets = useSafeAreaInsets();
   const { profile, user } = useAuth();
+  const { unreadCount } = useNotifications();
   const [active, setActive] = useState<ServiceRequest[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -118,16 +168,30 @@ export default function CustomerHome() {
           <Pressable
             onPress={() => router.push('/(customer)/notifications')}
             style={styles.bellButton}
-            accessibilityLabel="Notifications">
+            accessibilityLabel={`Notifications (${unreadCount} unread)`}>
             <Ionicons name="notifications-outline" size={20} color={theme.colors.text} />
-            <View style={styles.bellDot} />
+            {unreadCount > 0 && (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Text>
+              </View>
+            )}
           </Pressable>
         </View>
 
-        {/* User Greeting */}
-        <View style={styles.greetingBlock}>
-          <Text style={styles.hello}>Hello, {profile?.full_name ?? 'Driver'} 👋</Text>
-          <Text style={styles.greetingSub}>Ready to assist your journey across Pakistan</Text>
+        {/* User Greeting & Avatar Row */}
+        <View style={styles.greetingRow}>
+          <View style={styles.greetingBlock}>
+            <Text style={styles.hello}>Hello, {profile?.full_name ?? 'Driver'} 👋</Text>
+            <Text style={styles.greetingSub}>Ready to assist your journey across Pakistan</Text>
+          </View>
+          <Avatar
+            url={profile?.avatar_url}
+            name={profile?.full_name}
+            size={48}
+            onPress={() => router.push('/(customer)/(tabs)/profile')}
+          />
         </View>
 
         {/* Hero Card with Orange CTA */}
@@ -192,11 +256,15 @@ export default function CustomerHome() {
           </View>
         )}
 
-        {/* Quick Actions Grid */}
-        <Text style={styles.sectionTitle}>Quick Services</Text>
+        {/* Quick Services Section */}
+        <View style={styles.servicesHeader}>
+          <Text style={styles.sectionTitle}>Quick Services</Text>
+          <Text style={styles.sectionSubtitle}>Roadside repair, live diagnostics & garage</Text>
+        </View>
+
         <View style={styles.grid}>
           {shortcuts.map((item) => (
-            <Link key={item.title} href={item.href as '/(customer)/request'} asChild>
+            <Link key={item.title} href={item.href as any} asChild>
               <Pressable
                 style={({ pressed }) => [
                   styles.card,
@@ -207,7 +275,10 @@ export default function CustomerHome() {
                   <View
                     style={[
                       styles.iconCircle,
-                      item.isSos ? styles.sosIconCircle : { backgroundColor: theme.colors.primaryLight },
+                      {
+                        backgroundColor: item.bgColor,
+                        borderColor: item.borderColor,
+                      },
                     ]}>
                     <Ionicons name={item.icon} size={22} color={item.color} />
                   </View>
@@ -215,27 +286,58 @@ export default function CustomerHome() {
                     <View
                       style={[
                         styles.miniBadge,
-                        item.badge === 'Smart'
-                          ? { backgroundColor: theme.colors.yellowLight, borderColor: theme.colors.yellow }
-                          : { backgroundColor: theme.colors.primaryLight, borderColor: theme.colors.primarySubtle },
+                        {
+                          backgroundColor: item.badgeBg,
+                          borderColor: item.badgeBorder,
+                        },
                       ]}>
-                      <Text
-                        style={[
-                          styles.miniBadgeText,
-                          item.badge === 'Smart'
-                            ? { color: theme.colors.yellowText }
-                            : { color: theme.colors.primaryDark },
-                        ]}>
+                      <Text style={[styles.miniBadgeText, { color: item.badgeText }]}>
                         {item.badge}
                       </Text>
                     </View>
                   )}
                 </View>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                <Text style={styles.cardDesc}>{item.desc}</Text>
+
+                <View style={styles.cardBody}>
+                  <View style={styles.cardTitleRow}>
+                    <Text style={styles.cardTitle} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    <Ionicons
+                      name="arrow-forward"
+                      size={13}
+                      color={item.isSos ? '#DC2626' : theme.colors.muted}
+                    />
+                  </View>
+                  <Text style={styles.cardDesc} numberOfLines={2}>
+                    {item.desc}
+                  </Text>
+                </View>
               </Pressable>
             </Link>
           ))}
+        </View>
+
+        {/* Quick Helper Access Chips */}
+        <View style={styles.quickFooterRow}>
+          <Pressable
+            onPress={() => router.push('/(customer)/notifications')}
+            style={({ pressed }) => [styles.quickChip, pressed && styles.cardPressed]}>
+            <Ionicons name="notifications-outline" size={15} color={theme.colors.textSecondary} />
+            <Text style={styles.quickChipText}>Notifications</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/(customer)/support')}
+            style={({ pressed }) => [styles.quickChip, pressed && styles.cardPressed]}>
+            <Ionicons name="headset-outline" size={15} color={theme.colors.textSecondary} />
+            <Text style={styles.quickChipText}>24/7 Support</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/(customer)/(tabs)/history')}
+            style={({ pressed }) => [styles.quickChip, pressed && styles.cardPressed]}>
+            <Ionicons name="time-outline" size={15} color={theme.colors.textSecondary} />
+            <Text style={styles.quickChipText}>History</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </View>
@@ -276,18 +378,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...theme.shadows.card,
   },
-  bellDot: {
+  bellBadge: {
     position: 'absolute',
-    top: 10,
-    right: 11,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: theme.colors.orange, // Orange notification accent
+    top: 4,
+    right: 4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: theme.colors.orange,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
   },
+  bellBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+    lineHeight: 12,
+  },
+  greetingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   greetingBlock: {
+    flex: 1,
+    marginRight: 12,
     marginBottom: 16,
   },
   hello: {
@@ -431,20 +550,31 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 13,
   },
+  servicesHeader: {
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    color: theme.colors.muted,
+    fontSize: 13,
+    marginTop: 2,
+    fontWeight: '500',
+  },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    justifyContent: 'space-between',
+    rowGap: 12,
     marginTop: 10,
   },
   card: {
-    width: '48%',
+    width: '48.2%',
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
+    borderRadius: 18,
+    borderWidth: 1.5,
     borderColor: theme.colors.border,
     padding: 14,
-    minHeight: 128,
+    minHeight: 136,
     justifyContent: 'space-between',
     ...theme.shadows.card,
   },
@@ -456,42 +586,81 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 10,
   },
   iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 13,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   miniBadge: {
     borderWidth: 1,
     borderRadius: theme.radius.pill,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    alignSelf: 'flex-start',
   },
   miniBadgeText: {
-    fontSize: 9,
+    fontSize: 9.5,
     fontWeight: '800',
+    letterSpacing: 0.4,
     textTransform: 'uppercase',
   },
   sosCard: {
     backgroundColor: '#FFF7F7',
     borderColor: '#FECACA',
+    borderWidth: 1.5,
   },
-  sosIconCircle: {
-    backgroundColor: '#FEE2E2',
+  cardBody: {
+    marginTop: 'auto',
+  },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 4,
   },
   cardTitle: {
+    flex: 1,
     color: theme.colors.text,
-    fontWeight: '800',
-    fontSize: 14,
-    marginTop: 8,
+    fontWeight: '700',
+    fontSize: 14.5,
+    letterSpacing: -0.2,
   },
   cardDesc: {
     color: theme.colors.muted,
-    marginTop: 2,
+    marginTop: 3,
     fontSize: 12,
     lineHeight: 16,
+    fontWeight: '400',
+  },
+  quickFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 14,
+  },
+  quickChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    ...theme.shadows.card,
+  },
+  quickChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
   },
 });

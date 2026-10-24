@@ -1,6 +1,8 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -243,8 +245,17 @@ function AiHelpSession({ diagnosticData }: { diagnosticData?: string }) {
         <View style={styles.chat}>
           {messages.length === 0 && (
             <View style={[styles.message, styles.assistantMessage]}>
+              <View style={styles.aiHeaderRow}>
+                <View style={styles.aiAvatar}>
+                  <Ionicons name="sparkles" size={12} color="#FFFFFF" />
+                </View>
+                <Text style={styles.aiName}>AutoCares AI</Text>
+                <View style={styles.aiBadge}>
+                  <Text style={styles.aiBadgeText}>ASSISTANT</Text>
+                </View>
+              </View>
               <Text style={styles.messageText}>
-                Describe what your vehicle is experiencing (e.g., odd noises, smoke, battery clicks),
+                Describe what your vehicle is experiencing (e.g., odd noises, overheating, battery clicks),
                 and I will walk you through safe troubleshooting steps.
               </Text>
             </View>
@@ -256,6 +267,17 @@ function AiHelpSession({ diagnosticData }: { diagnosticData?: string }) {
                 styles.message,
                 message.role === 'user' ? styles.userMessage : styles.assistantMessage,
               ]}>
+              {message.role === 'model' && (
+                <View style={styles.aiHeaderRow}>
+                  <View style={styles.aiAvatar}>
+                    <Ionicons name="sparkles" size={12} color="#FFFFFF" />
+                  </View>
+                  <Text style={styles.aiName}>AutoCares AI</Text>
+                  <View style={styles.aiBadge}>
+                    <Text style={styles.aiBadgeText}>ASSISTANT</Text>
+                  </View>
+                </View>
+              )}
               <Text
                 style={[
                   styles.messageText,
@@ -266,8 +288,9 @@ function AiHelpSession({ diagnosticData }: { diagnosticData?: string }) {
             </View>
           ))}
           {loading && (
-            <View style={[styles.message, styles.assistantMessage]}>
-              <Text style={styles.messageText}>Analyzing symptoms safely…</Text>
+            <View style={[styles.message, styles.assistantMessage, styles.loadingBubble]}>
+              <ActivityIndicator size="small" color={theme.colors.primary} />
+              <Text style={styles.loadingText}>Analyzing vehicle symptoms & safety data…</Text>
             </View>
           )}
         </View>
@@ -319,31 +342,108 @@ function AiHelpSession({ diagnosticData }: { diagnosticData?: string }) {
         {guidance && (
           <Card style={styles.guidanceCard}>
             <View style={styles.guidanceHeader}>
-              <Text style={styles.heading}>Diagnosis & Safe Next Steps</Text>
-              <View style={styles.urgencyBadge}>
-                <Text style={styles.urgencyText}>{guidance.urgency.toUpperCase()} PRIORITY</Text>
+              <View style={styles.guidanceTitleRow}>
+                <View style={styles.guidanceIconBox}>
+                  <Ionicons name="construct" size={18} color={theme.colors.primaryDark} />
+                </View>
+                <View>
+                  <Text style={styles.heading}>Diagnosis & Safe Steps</Text>
+                  <Text style={styles.subHeadingCaption}>AI-Powered Roadside Triage</Text>
+                </View>
+              </View>
+
+              <View
+                style={[
+                  styles.urgencyBadge,
+                  guidance.urgency === 'high'
+                    ? styles.urgencyHigh
+                    : guidance.urgency === 'medium'
+                    ? styles.urgencyMedium
+                    : styles.urgencyLow,
+                ]}>
+                <View
+                  style={[
+                    styles.urgencyDot,
+                    {
+                      backgroundColor:
+                        guidance.urgency === 'high'
+                          ? '#DC2626'
+                          : guidance.urgency === 'medium'
+                          ? '#D97706'
+                          : '#16A34A',
+                    },
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.urgencyText,
+                    {
+                      color:
+                        guidance.urgency === 'high'
+                          ? '#991B1B'
+                          : guidance.urgency === 'medium'
+                          ? '#92400E'
+                          : '#166534',
+                    },
+                  ]}>
+                  {guidance.urgency.toUpperCase()}
+                </Text>
               </View>
             </View>
 
-            <Text style={styles.subHeading}>Possible Causes:</Text>
-            {guidance.possible_causes.length ? (
-              guidance.possible_causes.map((cause, index) => (
-                <Text key={`${index}-${cause}`} style={styles.listItem}>
-                  • {cause}
-                </Text>
-              ))
-            ) : (
-              <Text style={styles.body}>No single obvious cause identified.</Text>
-            )}
+            {/* Summary */}
+            <View style={styles.summaryBox}>
+              <Text style={styles.summaryText}>{guidance.summary}</Text>
+            </View>
 
-            <Text style={styles.subHeading}>Recommended Steps:</Text>
-            {guidance.next_steps.map((step, index) => (
-              <Text key={`${index}-${step}`} style={styles.listItem}>
-                {index + 1}. {step}
-              </Text>
-            ))}
+            {/* Possible Causes */}
+            <Text style={styles.sectionHeaderLabel}>Possible Causes</Text>
+            <View style={styles.causesList}>
+              {guidance.possible_causes.length ? (
+                guidance.possible_causes.map((cause, index) => (
+                  <View key={`${index}-${cause}`} style={styles.causeRow}>
+                    <View style={styles.causeBullet} />
+                    <Text style={styles.causeText}>{cause}</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.body}>No single obvious cause identified.</Text>
+              )}
+            </View>
 
-            <Text style={styles.safetyNote}>{guidance.safety_note}</Text>
+            {/* Recommended Steps */}
+            <Text style={styles.sectionHeaderLabel}>Recommended Next Steps</Text>
+            <View style={styles.stepsList}>
+              {guidance.next_steps.map((step, index) => (
+                <View key={`${index}-${step}`} style={styles.stepRow}>
+                  <View style={styles.stepBadge}>
+                    <Text style={styles.stepBadgeText}>{index + 1}</Text>
+                  </View>
+                  <Text style={styles.stepText}>{step}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Safety Caution Callout Box */}
+            {guidance.safety_note ? (
+              <View style={styles.safetyCallout}>
+                <View style={styles.safetyIconCircle}>
+                  <Ionicons name="shield-checkmark" size={18} color="#D97706" />
+                </View>
+                <View style={styles.safetyCalloutContent}>
+                  <Text style={styles.safetyCalloutTitle}>CRITICAL SAFETY NOTE</Text>
+                  <Text style={styles.safetyCalloutText}>{guidance.safety_note}</Text>
+                </View>
+              </View>
+            ) : null}
+
+            {/* Follow-up Question */}
+            {guidance.follow_up_question ? (
+              <View style={styles.questionBox}>
+                <Ionicons name="help-circle" size={17} color={theme.colors.primaryDark} />
+                <Text style={styles.questionText}>{guidance.follow_up_question}</Text>
+              </View>
+            ) : null}
 
             {guidance.recommend_mechanic && (
               <PrimaryButton
@@ -461,22 +561,73 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
-  chat: { gap: 10, marginVertical: 12 },
-  message: { maxWidth: '85%', padding: 14, borderRadius: theme.radius.lg },
+  chat: { gap: 12, marginVertical: 14 },
+  message: {
+    maxWidth: '86%',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 18,
+  },
   userMessage: {
     alignSelf: 'flex-end',
-    backgroundColor: theme.colors.primary, // Sky Blue
+    backgroundColor: theme.colors.primary,
     borderBottomRightRadius: 4,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 5,
+    elevation: 3,
   },
   assistantMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
     borderBottomLeftRadius: 4,
     ...theme.shadows.card,
   },
-  messageText: { color: theme.colors.text, lineHeight: 20, fontSize: 14 },
+  aiHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  aiAvatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiName: {
+    color: theme.colors.text,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  aiBadge: {
+    backgroundColor: theme.colors.primaryLight,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  aiBadgeText: {
+    color: theme.colors.primaryDark,
+    fontSize: 8.5,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  loadingBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  loadingText: {
+    color: theme.colors.muted,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  messageText: { color: theme.colors.text, lineHeight: 21, fontSize: 13.5 },
   userMessageText: { color: '#FFFFFF', fontWeight: '600' },
   quickChip: {
     borderRadius: theme.radius.pill,
@@ -490,54 +641,206 @@ const styles = StyleSheet.create({
   messageInput: { minHeight: 76, textAlignVertical: 'top' },
   guidanceCard: {
     marginTop: 20,
-    borderRadius: theme.radius.xl,
+    borderRadius: 20,
     padding: 18,
     borderWidth: 1.5,
-    borderColor: theme.colors.primarySubtle,
+    borderColor: '#D6F1FA',
+    backgroundColor: '#FFFFFF',
     ...theme.shadows.cardElevated,
   },
   guidanceHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
+  },
+  guidanceTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  guidanceIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#EBF8FD',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   heading: {
     color: theme.colors.text,
     fontWeight: '800',
-    fontSize: 16,
-    flex: 1,
+    fontSize: 15.5,
+  },
+  subHeadingCaption: {
+    color: theme.colors.muted,
+    fontSize: 11,
+    fontWeight: '500',
   },
   urgencyBadge: {
-    backgroundColor: theme.colors.yellowLight,
-    borderColor: theme.colors.yellow,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     borderWidth: 1,
     borderRadius: theme.radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
+  urgencyHigh: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  urgencyMedium: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+  },
+  urgencyLow: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  urgencyDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   urgencyText: {
-    color: theme.colors.yellowText,
-    fontSize: 10,
+    fontSize: 10.5,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  summaryBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 12,
+    marginBottom: 14,
+  },
+  summaryText: {
+    color: theme.colors.text,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '500',
+  },
+  sectionHeaderLabel: {
+    color: theme.colors.text,
+    fontWeight: '800',
+    fontSize: 13.5,
+    marginTop: 6,
+    marginBottom: 8,
+  },
+  causesList: {
+    gap: 6,
+    marginBottom: 14,
+  },
+  causeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  causeBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EF4444',
+    marginTop: 6,
+  },
+  causeText: {
+    flex: 1,
+    color: theme.colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  stepsList: {
+    gap: 8,
+    marginBottom: 16,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#F8FAFC',
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  stepBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#E0F2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepBadgeText: {
+    color: '#0284C7',
+    fontSize: 11,
     fontWeight: '800',
   },
-  subHeading: {
+  stepText: {
+    flex: 1,
     color: theme.colors.text,
-    fontWeight: '700',
-    fontSize: 14,
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  body: { color: theme.colors.muted, lineHeight: 20, fontSize: 13 },
-  listItem: { color: theme.colors.textSecondary, lineHeight: 20, marginBottom: 3, fontSize: 13 },
-  safetyNote: {
-    color: theme.colors.orangeText,
-    backgroundColor: theme.colors.orangeLight,
-    padding: 10,
-    borderRadius: theme.radius.sm,
-    fontSize: 12,
+    fontSize: 12.5,
     lineHeight: 18,
-    fontWeight: '600',
-    marginVertical: 12,
+    fontWeight: '500',
+  },
+  safetyCallout: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+    borderWidth: 1.5,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 14,
+  },
+  safetyIconCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  safetyCalloutContent: {
+    flex: 1,
+  },
+  safetyCalloutTitle: {
+    color: '#92400E',
+    fontSize: 11.5,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+    marginBottom: 2,
+  },
+  safetyCalloutText: {
+    color: '#78350F',
+    fontSize: 12.5,
+    lineHeight: 17,
+    fontWeight: '500',
+  },
+  questionBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#EBF8FD',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D6F1FA',
+    padding: 12,
+    marginBottom: 14,
+  },
+  questionText: {
+    flex: 1,
+    color: theme.colors.primaryDark,
+    fontSize: 12.5,
+    fontWeight: '700',
+    lineHeight: 17,
+  },
+  body: {
+    color: theme.colors.muted,
+    fontSize: 13,
   },
 });

@@ -1,3 +1,4 @@
+import { Avatar } from '../../../components/avatar';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
@@ -14,11 +15,23 @@ import {
 } from '../../../components/ui';
 import { theme } from '../../../constants/autocares-theme';
 import { getCurrentCoords } from '../../../lib/location';
+import { updateProfile } from '../../../lib/profiles';
 import { getMechanicProfile, updateMechanicProfile } from '../../../lib/mechanics';
 import { useAuth } from '../../../providers/auth-provider';
 
 export default function MechanicProfileScreen() {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, refreshProfile } = useAuth();
+
+  async function handleAvatarPicked(uri: string) {
+    if (!user) return;
+    const { error } = await updateProfile(user.id, { avatar_url: uri });
+    if (error) {
+      Alert.alert('Upload Failed', error);
+      return;
+    }
+    await refreshProfile();
+    Alert.alert('Success', 'Mechanic photo updated successfully!');
+  }
   const [workshop, setWorkshop] = useState('');
   const [specialties, setSpecialties] = useState('');
   const [experience, setExperience] = useState('0');
@@ -75,6 +88,24 @@ export default function MechanicProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <Title>Mechanic Profile</Title>
         <Subtitle>{`${profile?.full_name ?? 'Technician'} · ${user?.email ?? ''}`}</Subtitle>
+
+        {/* Mechanic Avatar Card */}
+        <Card style={styles.userCard}>
+          <Avatar
+            url={profile?.avatar_url}
+            name={workshop || profile?.full_name || 'Mechanic'}
+            size={72}
+            editable={true}
+            onImagePicked={handleAvatarPicked}
+          />
+          <View style={styles.userInfo}>
+            <Text style={styles.userName}>{workshop || profile?.full_name || 'Mechanic'}</Text>
+            <Text style={styles.userEmail}>{user?.email}</Text>
+            <View style={styles.roleBadge}>
+              <Text style={styles.roleText}>{profile?.role?.toUpperCase() || 'MECHANIC'}</Text>
+            </View>
+          </View>
+        </Card>
 
         {/* Verification Status Card */}
         <Card style={styles.statusCard}>
@@ -176,6 +207,43 @@ export default function MechanicProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  userCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    padding: 16,
+    marginBottom: 16,
+    backgroundColor: theme.colors.surface,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    color: theme.colors.text,
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  userEmail: {
+    color: theme.colors.muted,
+    fontSize: 13,
+    marginBottom: 6,
+  },
+  roleBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: theme.colors.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    borderColor: theme.colors.primarySubtle,
+  },
+  roleText: {
+    color: theme.colors.primaryDark,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
   scroll: {
     paddingBottom: 36,
   },

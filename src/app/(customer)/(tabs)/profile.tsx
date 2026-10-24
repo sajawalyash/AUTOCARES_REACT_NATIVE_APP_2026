@@ -1,3 +1,4 @@
+import { Avatar } from '../../../components/avatar';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -21,6 +22,17 @@ export default function CustomerProfile() {
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
   const [phone, setPhone] = useState(profile?.phone ?? '');
   const [saving, setSaving] = useState(false);
+
+  async function handleAvatarPicked(uri: string) {
+    if (!user) return;
+    const { error } = await updateProfile(user.id, { avatar_url: uri });
+    if (error) {
+      Alert.alert('Upload Failed', error);
+      return;
+    }
+    await refreshProfile();
+    Alert.alert('Success', 'Profile photo updated successfully!');
+  }
 
   async function save() {
     if (!user) return;
@@ -51,11 +63,13 @@ export default function CustomerProfile() {
 
         {/* User Card */}
         <Card style={styles.userCard}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {(profile?.full_name || user?.email || 'U')[0].toUpperCase()}
-            </Text>
-          </View>
+          <Avatar
+            url={profile?.avatar_url}
+            name={profile?.full_name || user?.email}
+            size={72}
+            editable={true}
+            onImagePicked={handleAvatarPicked}
+          />
           <View style={styles.userInfo}>
             <Text style={styles.userName}>{profile?.full_name || 'Driver'}</Text>
             <Text style={styles.userEmail}>{user?.email}</Text>

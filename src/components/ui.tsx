@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
 import {
   ActivityIndicator,
@@ -257,8 +258,14 @@ export function EmptyState({ message }: { message: string }) {
 export function ErrorText({ message }: { message: string | null | undefined }) {
   if (!message) return null;
   return (
-    <View style={styles.errorBox}>
-      <Text style={styles.errorText}>{message}</Text>
+    <View style={styles.errorBox} accessibilityRole="alert">
+      <View style={styles.errorIconCircle}>
+        <Ionicons name="alert-circle" size={18} color="#DC2626" />
+      </View>
+      <View style={styles.errorContent}>
+        <Text style={styles.errorTitle}>Notice</Text>
+        <Text style={styles.errorText}>{message}</Text>
+      </View>
     </View>
   );
 }
@@ -415,18 +422,41 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   errorBox: {
-    backgroundColor: theme.colors.dangerLight,
+    backgroundColor: '#FEF2F2',
     borderColor: '#FECACA',
-    borderWidth: 1,
-    borderRadius: theme.radius.sm,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 12,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    ...theme.shadows.card,
+  },
+  errorIconCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  errorContent: {
+    flex: 1,
+  },
+  errorTitle: {
+    color: '#991B1B',
+    fontSize: 12.5,
+    fontWeight: '800',
+    marginBottom: 2,
+    letterSpacing: 0.2,
   },
   errorText: {
-    color: theme.colors.danger,
+    color: '#B91C1C',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '500',
     lineHeight: 18,
   },
 });

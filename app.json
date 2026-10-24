@@ -19,11 +19,10 @@
         }
       }
     },
-
     "web": {
-  "bundler": "metro",
-  "output": "single"
-},
+      "bundler": "metro",
+      "output": "single"
+    },
     "android": {
       "package": "com.autocares.mobile",
       "config": {
@@ -43,7 +42,6 @@
       ],
       "predictiveBackGestureEnabled": false
     },
-  
     "plugins": [
       "expo-router",
       [
@@ -71,10 +69,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a534a5e7-a25a-42f6-8b92-2322ec38c40f"
+      }
     }
-
-    
   }
-  
 }
-

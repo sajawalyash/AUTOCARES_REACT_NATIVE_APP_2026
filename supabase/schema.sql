@@ -527,7 +527,8 @@ language plpgsql
 set search_path = public
 as $$
 begin
-  if not public.is_admin()
+  if auth.uid() is not null
+    and not public.is_admin()
     and (
       new.role is distinct from old.role
       or new.is_disabled is distinct from old.is_disabled
@@ -549,7 +550,7 @@ language plpgsql
 set search_path = public
 as $$
 begin
-  if not public.is_admin() then
+  if auth.uid() is not null and not public.is_admin() then
     if tg_op = 'INSERT' and new.verification_status <> 'pending' then
       raise exception 'Only an administrator can approve a mechanic account.';
     elsif tg_op = 'UPDATE'
@@ -973,6 +974,24 @@ create policy "payments_insert_system" on public.payments
 
 -- cleanup helper
 drop function if exists public._autocares_add_column(text, text, text);
+
+-- Enable Supabase Realtime
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables 
+    where pubname = 'supabase_realtime' and tablename = 'notifications'
+  ) then
+    alter publication supabase_realtime add table public.notifications;
+  end if;
+  if not exists (
+    select 1 from pg_publication_tables 
+    where pubname = 'supabase_realtime' and tablename = 'service_requests'
+  ) then
+    alter publication supabase_realtime add table public.service_requests;
+  end if;
+end;
+$$;
 
 -- After registering users:
 -- update mechanic_profiles set verification_status = 'approved', latitude = 24.8607, longitude = 67.0011, specialties = array['battery','tires','towing'], is_available = true where user_id = '<id>';

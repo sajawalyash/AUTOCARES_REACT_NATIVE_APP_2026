@@ -39,7 +39,7 @@ export async function listAdminMechanicProfiles() {
   const [mechanicResult, privateDetailsResult] = await Promise.all([
     supabase
       .from('mechanic_profiles')
-      .select('*, profiles:user_id(full_name, phone)')
+      .select('*, profiles:user_id(full_name, phone, avatar_url)')
       .order('created_at', { ascending: false }),
     supabase.from('mechanic_private_details').select('user_id, cnic_number'),
   ]);

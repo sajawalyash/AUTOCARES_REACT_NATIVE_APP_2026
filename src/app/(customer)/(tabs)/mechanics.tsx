@@ -1,3 +1,4 @@
+import { Avatar } from '../../../components/avatar';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
@@ -559,12 +560,27 @@ export default function MechanicsScreen() {
       {/* Selected Mechanic Spotlight Card */}
       {selectedMechanic && (
         <View style={styles.detailCard}>
-          <View style={styles.cardTopRow}>
-            <Text style={styles.name}>
-              {selectedMechanic.workshop_name || selectedMechanic.profiles?.full_name || 'Mechanic'}
-            </Text>
-            <View style={styles.ratingBadge}>
-              <Text style={styles.ratingText}>★ {Number(selectedMechanic.average_rating || 0).toFixed(1)}</Text>
+          <View style={styles.mechanicHeaderWithAvatar}>
+            <Avatar
+              url={selectedMechanic.profiles?.avatar_url}
+              name={selectedMechanic.workshop_name || selectedMechanic.profiles?.full_name || 'Mechanic'}
+              size={52}
+            />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <View style={styles.cardTopRow}>
+                <Text style={styles.name} numberOfLines={1}>
+                  {selectedMechanic.workshop_name || selectedMechanic.profiles?.full_name || 'Mechanic'}
+                </Text>
+                <View style={styles.ratingBadge}>
+                  <Text style={styles.ratingText}>★ {Number(selectedMechanic.average_rating || 0).toFixed(1)}</Text>
+                </View>
+              </View>
+              <Text style={styles.meta} numberOfLines={1}>
+                {selectedMechanic.mechanic_type ?? 'Mechanic'}
+                {selectedMechanic.distance_km > 0
+                  ? ` · ${selectedMechanic.distance_km.toFixed(1)} km away · ETA ~${selectedMechanic.eta_minutes} min`
+                  : ' · Available'}
+              </Text>
             </View>
           </View>
           <Text style={styles.meta}>
@@ -613,21 +629,29 @@ export default function MechanicsScreen() {
             const isSelected = item.user_id === selectedMechanicId;
             return (
               <View style={[styles.card, isSelected && styles.cardSelected]}>
-                <View style={styles.cardTopRow}>
-                  <Text style={styles.name}>
-                    {item.workshop_name || item.profiles?.full_name || 'Mechanic'}
-                  </Text>
-                  <View style={styles.ratingBadge}>
-                    <Text style={styles.ratingText}>★ {Number(item.average_rating || 0).toFixed(1)}</Text>
+                <View style={styles.mechanicHeaderWithAvatar}>
+                  <Avatar
+                    url={item.profiles?.avatar_url}
+                    name={item.workshop_name || item.profiles?.full_name || 'Mechanic'}
+                    size={46}
+                  />
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <View style={styles.cardTopRow}>
+                      <Text style={styles.name} numberOfLines={1}>
+                        {item.workshop_name || item.profiles?.full_name || 'Mechanic'}
+                      </Text>
+                      <View style={styles.ratingBadge}>
+                        <Text style={styles.ratingText}>★ {Number(item.average_rating || 0).toFixed(1)}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.meta} numberOfLines={1}>
+                      {item.distance_km > 0
+                        ? `${item.distance_km.toFixed(1)} km away · ETA ~${item.eta_minutes} min`
+                        : 'Location available'}
+                      {item.rating_count ? ` (${item.rating_count} reviews)` : ''}
+                    </Text>
                   </View>
                 </View>
-
-                <Text style={styles.meta}>
-                  {item.distance_km > 0
-                    ? `${item.distance_km.toFixed(1)} km away · ETA ~${item.eta_minutes} min`
-                    : 'Location available'}
-                  {item.rating_count ? ` (${item.rating_count} reviews)` : ''}
-                </Text>
                 <Text style={styles.metaSub}>
                   {item.mechanic_type ?? 'Mechanic'} · {item.specialties?.join(', ') || 'General repairs'}
                 </Text>
@@ -873,6 +897,11 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 8,
     ...theme.shadows.cardElevated,
+  },
+  mechanicHeaderWithAvatar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   cardTopRow: {
     flexDirection: 'row',

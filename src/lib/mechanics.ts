@@ -10,7 +10,7 @@ export type NearbyMechanic = MechanicProfile & {
 export async function listApprovedMechanics() {
   const { data, error } = await supabase
     .from('mechanic_profiles')
-    .select('*, profiles:user_id(full_name, phone)')
+    .select('*, profiles:user_id(full_name, phone, avatar_url)')
     .eq('verification_status', 'approved')
     .eq('is_available', true);
   return { mechanics: (data ?? []) as MechanicProfile[], error: error?.message ?? null };
@@ -61,7 +61,7 @@ export async function getNearbyMechanics(
 export async function getMechanicProfile(userId: string) {
   const { data, error } = await supabase
     .from('mechanic_profiles')
-    .select('*, profiles:user_id(full_name, phone)')
+    .select('*, profiles:user_id(full_name, phone, avatar_url)')
     .eq('user_id', userId)
     .maybeSingle();
   return { mechanic: data as MechanicProfile | null, error: error?.message ?? null };
@@ -88,7 +88,7 @@ export async function updateMechanicProfile(
     .from('mechanic_profiles')
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq('user_id', userId)
-    .select('*, profiles:user_id(full_name, phone)')
+    .select('*, profiles:user_id(full_name, phone, avatar_url)')
     .single();
   return { mechanic: data as MechanicProfile | null, error: error?.message ?? null };
 }
@@ -96,7 +96,7 @@ export async function updateMechanicProfile(
 export async function listPendingVerifications() {
   const { data, error } = await supabase
     .from('mechanic_profiles')
-    .select('*, profiles:user_id(full_name, phone)')
+    .select('*, profiles:user_id(full_name, phone, avatar_url)')
     .eq('verification_status', 'pending')
     .order('created_at', { ascending: true });
   return { mechanics: (data ?? []) as MechanicProfile[], error: error?.message ?? null };
@@ -105,7 +105,7 @@ export async function listPendingVerifications() {
 export async function listMechanicsByVerificationStatus() {
   const { data, error } = await supabase
     .from('mechanic_profiles')
-    .select('*, profiles:user_id(full_name, phone)')
+    .select('*, profiles:user_id(full_name, phone, avatar_url)')
     .order('created_at', { ascending: false });
   return { mechanics: (data ?? []) as MechanicProfile[], error: error?.message ?? null };
 }

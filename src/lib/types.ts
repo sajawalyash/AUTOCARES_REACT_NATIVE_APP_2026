@@ -47,7 +47,7 @@ export type MechanicProfile = {
   rating_count: number;
   completed_jobs: number;
   bio: string | null;
-  profiles?: Pick<Profile, 'full_name' | 'phone'>;
+  profiles?: Pick<Profile, 'full_name' | 'phone' | 'avatar_url'>;
 };
 
 export type AdminMechanicProfile = MechanicProfile & {
@@ -109,7 +109,7 @@ export type ServiceRequest = {
   created_at: string;
   updated_at: string;
   completed_at: string | null;
-  profiles?: Pick<Profile, 'full_name' | 'phone'>;
+  profiles?: Pick<Profile, 'full_name' | 'phone' | 'avatar_url'>;
   mechanic?: Pick<Profile, 'full_name' | 'phone'>;
   vehicles?: Pick<Vehicle, 'vehicle_type' | 'make' | 'model' | 'year' | 'registration_number'>;
 };
@@ -166,7 +166,7 @@ export type SupportTicket = {
   message: string;
   status: string;
   created_at: string;
-  profiles?: Pick<Profile, 'full_name' | 'phone'>;
+  profiles?: Pick<Profile, 'full_name' | 'phone' | 'avatar_url'>;
 };
 
 export type ServiceCategory = {

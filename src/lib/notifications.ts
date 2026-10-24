@@ -30,3 +30,12 @@ export async function markNotificationRead(id: string) {
     .eq('id', id);
   return { error: error?.message ?? null };
 }
+
+export async function markAllNotificationsRead(userId: string) {
+  const { error } = await supabase
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('user_id', userId)
+    .eq('is_read', false);
+  return { error: error?.message ?? null };
+}
