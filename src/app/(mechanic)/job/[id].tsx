@@ -16,6 +16,7 @@ import {
   Title,
 } from '../../../components/ui';
 import { theme } from '../../../constants/autocares-theme';
+import WhatsAppContactCard from '../../../components/whatsapp-contact-card';
 import { useProblemLabels } from '../../../hooks/use-problem-labels';
 import { getCurrentCoords } from '../../../lib/location';
 import {
@@ -199,6 +200,18 @@ export default function JobDetailScreen() {
 
         <ErrorText message={error} />
         <ErrorText message={categoryError} />
+
+        {/* Customer WhatsApp & Direct Phone Contact */}
+        {['accepted', 'en_route', 'in_progress'].includes(job.status) && (
+          <WhatsAppContactCard
+            role="mechanic"
+            requestId={job.id}
+            phone={job.profiles?.phone}
+            participantName={job.profiles?.full_name}
+            status={job.status}
+            vehicleDetails={job.vehicles ? vehicleLabel(job.vehicles) : null}
+          />
+        )}
 
         {/* Customer & Incident Details */}
         <Card style={styles.customerCard}>

@@ -13,6 +13,7 @@ import {
   Title,
 } from '../../../components/ui';
 import MapView, { Marker } from '../../../components/roadside-map';
+import WhatsAppContactCard from '../../../components/whatsapp-contact-card';
 import { theme } from '../../../constants/autocares-theme';
 import { useProblemLabels } from '../../../hooks/use-problem-labels';
 import { confirmServicePayment, formatPKR } from '../../../lib/payments';
@@ -124,6 +125,17 @@ export default function TrackingScreen() {
 
         <ErrorText message={error} />
         <ErrorText message={categoryError} />
+
+        {/* Assigned Mechanic WhatsApp & Call Contact Card */}
+        {['accepted', 'en_route', 'in_progress'].includes(request.status) && (
+          <WhatsAppContactCard
+            role="customer"
+            requestId={request.id}
+            phone={request.mechanic?.phone}
+            participantName={request.mechanic?.full_name}
+            status={request.status}
+          />
+        )}
 
         {/* ETA & Mechanic Status Box */}
         <Card style={styles.etaCard}>

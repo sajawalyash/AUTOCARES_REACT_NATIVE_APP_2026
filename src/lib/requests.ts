@@ -31,7 +31,7 @@ export async function createServiceRequest(input: {
 export async function listCustomerRequests(customerId: string) {
   const { data, error } = await supabase
     .from('service_requests')
-    .select('*, vehicles:vehicle_id(make, model, year, registration_number)')
+    .select('*, mechanic:mechanic_id(full_name, phone), vehicles:vehicle_id(make, model, year, registration_number)')
     .eq('customer_id', customerId)
     .order('created_at', { ascending: false });
   return { requests: (data ?? []) as ServiceRequest[], error: error?.message ?? null };
@@ -41,7 +41,7 @@ export async function listPendingRequests() {
   const { data, error } = await supabase
     .from('service_requests')
     .select(
-      '*, profiles:customer_id(full_name, phone), vehicles:vehicle_id(vehicle_type, make, model, year, registration_number)'
+      '*, profiles:customer_id(full_name, phone), mechanic:mechanic_id(full_name, phone), vehicles:vehicle_id(vehicle_type, make, model, year, registration_number)'
     )
     .eq('status', 'pending')
     .order('created_at', { ascending: true });
