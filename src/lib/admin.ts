@@ -9,6 +9,12 @@ import type {
   UserRole,
 } from './types';
 
+export type AdminRating = Rating & {
+  profiles?: { full_name: string | null } | null;
+  customer?: { full_name: string | null } | null;
+  mechanic?: { full_name: string | null } | null;
+};
+
 export async function listServiceCategories(includeInactive = false) {
   let query = supabase.from('service_categories').select('*').order('label');
   if (!includeInactive) query = query.eq('is_active', true);
@@ -25,6 +31,20 @@ export async function updateServiceCategory(
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq('id', id);
   return { error: error?.message ?? null };
+}
+
+export async function upsertServiceCategory(
+  category: Pick<ServiceCategory, 'id' | 'label' | 'description' | 'is_active'>
+) {
+  const formattedId = category.id.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  const { error } = await supabase.from('service_categories').upsert({
+    id: formattedId,
+    label: category.label.trim(),
+    description: category.description.trim(),
+    is_active: category.is_active,
+    updated_at: new Date().toISOString(),
+  });
+  return { error: error?.message ?? null, id: formattedId };
 }
 
 export async function listAdminSupportTickets() {
@@ -66,9 +86,18 @@ export async function updateSupportTicketStatus(
 export async function listAdminRatings() {
   const { data, error } = await supabase
     .from('ratings')
-    .select('*, profiles:customer_id(full_name)')
+    .select('*, customer:customer_id(full_name), mechanic:mechanic_id(full_name)')
     .order('created_at', { ascending: false });
-  return { ratings: (data ?? []) as (Rating & { profiles?: { full_name: string | null } })[], error: error?.message ?? null };
+  
+  const formattedRatings = ((data ?? []) as (Rating & {
+    customer?: { full_name: string | null } | null;
+    mechanic?: { full_name: string | null } | null;
+  })[]).map((r) => ({
+    ...r,
+    profiles: r.customer,
+  })) as AdminRating[];
+
+  return { ratings: formattedRatings, error: error?.message ?? null };
 }
 
 export async function deleteAdminRating(id: string) {
@@ -108,12 +137,16 @@ export async function recordAdminActivity(input: {
   entity_id?: string | null;
   details?: Record<string, unknown>;
 }) {
-  const { error } = await supabase.from('admin_activity_logs').insert({
-    ...input,
-    entity_id: input.entity_id ?? null,
-    details: input.details ?? {},
-  });
-  return { error: error?.message ?? null };
+  try {
+    const { error } = await supabase.from('admin_activity_logs').insert({
+      ...input,
+      entity_id: input.entity_id ?? null,
+      details: input.details ?? {},
+    });
+    return { error: error?.message ?? null };
+  } catch (err: any) {
+    return { error: err?.message ?? 'Unknown activity log error' };
+  }
 }
 
 export async function listAdminActivity(limit = 200) {
@@ -123,4 +156,26 @@ export async function listAdminActivity(limit = 200) {
     .order('created_at', { ascending: false })
     .limit(limit);
   return { activities: (data ?? []) as AdminActivityLog[], error: error?.message ?? null };
+}
+
+export async function getAdminToolsSummary() {
+  const [categoriesRes, ticketsRes, ratingsRes] = await Promise.all([
+    supabase.from('service_categories').select('id, is_active'),
+    supabase.from('support_tickets').select('id, status'),
+    supabase.from('ratings').select('id'),
+  ]);
+
+  const activeCategoriesCount = (categoriesRes.data ?? []).filter((c) => c.is_active).length;
+  const totalCategoriesCount = (categoriesRes.data ?? []).length;
+  const openTicketsCount = (ticketsRes.data ?? []).filter((t) => t.status === 'open' || t.status === 'in_progress').length;
+  const totalTicketsCount = (ticketsRes.data ?? []).length;
+  const totalRatingsCount = (ratingsRes.data ?? []).length;
+
+  return {
+    activeCategoriesCount,
+    totalCategoriesCount,
+    openTicketsCount,
+    totalTicketsCount,
+    totalRatingsCount,
+  };
 }
