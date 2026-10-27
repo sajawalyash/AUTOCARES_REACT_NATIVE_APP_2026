@@ -58,8 +58,8 @@ export function NotificationProvider({ children }: PropsWithChildren) {
   const [toastNotification, setToastNotification] = useState<AppNotification | null>(null);
 
   // Animated toast values
-  const translateY = useRef(new Animated.Value(-120)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
+  const [translateY] = useState(() => new Animated.Value(-120));
+  const [opacity] = useState(() => new Animated.Value(0));
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const unreadCount = useMemo(
@@ -130,12 +130,16 @@ export function NotificationProvider({ children }: PropsWithChildren) {
 
   // Initial fetch and Realtime Subscription
   useEffect(() => {
+    let isMounted = true;
     if (!user) {
-      setNotifications([]);
       return;
     }
 
-    loadNotifications();
+    listNotifications(user.id).then(({ notifications: list }) => {
+      if (isMounted) {
+        setNotifications(list);
+      }
+    });
 
     // Set up Supabase Realtime Channel
     const channelName = `realtime:notifications:${user.id}`;
@@ -197,9 +201,10 @@ export function NotificationProvider({ children }: PropsWithChildren) {
       .subscribe();
 
     return () => {
+      isMounted = false;
       supabase.removeChannel(channel);
     };
-  }, [loadNotifications, showToast, user]);
+  }, [showToast, user]);
 
   const markAsRead = useCallback(async (id: string) => {
     // Optimistic update

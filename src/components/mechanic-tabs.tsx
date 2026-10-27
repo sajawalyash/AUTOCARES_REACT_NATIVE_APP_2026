@@ -62,7 +62,7 @@ export default function MechanicTabs() {
         options={{
           title: 'Overview',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'speedometer' : 'speedometer-outline'} color={color} size={22} />
+            <Ionicons name={focused ? 'speedometer' : 'speedometer-outline'} color={color as string} size={22} />
           ),
         }}
       />
@@ -74,7 +74,7 @@ export default function MechanicTabs() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'alert-circle' : 'alert-circle-outline'}
-              color={focused ? theme.colors.orange : color}
+              color={focused ? theme.colors.orange : (color as string)}
               size={22}
             />
           ),
@@ -85,7 +85,7 @@ export default function MechanicTabs() {
         options={{
           title: 'My Jobs',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'construct' : 'construct-outline'} color={color} size={22} />
+            <Ionicons name={focused ? 'construct' : 'construct-outline'} color={color as string} size={22} />
           ),
         }}
       />
@@ -94,7 +94,7 @@ export default function MechanicTabs() {
         options={{
           title: 'Earnings',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'cash' : 'cash-outline'} color={color} size={22} />
+            <Ionicons name={focused ? 'cash' : 'cash-outline'} color={color as string} size={22} />
           ),
         }}
       />
@@ -103,7 +103,7 @@ export default function MechanicTabs() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} color={color} size={22} />
+            <Ionicons name={focused ? 'person' : 'person-outline'} color={color as string} size={22} />
           ),
         }}
       />

@@ -1,0 +1,80 @@
+
+{
+  "expo": {
+    "name": "AutoCaresMobile",
+    "slug": "AutoCaresMobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "autocaresmobile",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "icon": "./assets/expo.icon",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "AutoCares uses your location to find nearby mechanics and share your roadside position.",
+        "NSBluetoothAlwaysUsageDescription": "AutoCares uses Bluetooth to find and connect to your BLE OBD-II adapter."
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyAIi95dchgUrtLmuMCsElW1drwlTIcRGWU"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "android": {
+      "package": "com.autocares.mobile",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAIi95dchgUrtLmuMCsElW1drwlTIcRGWU"
+        }
+      },
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#ffffff",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 76
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow AutoCares to use your location to find nearby mechanics and share roadside assistance coordinates."
+        }
+      ],
+      [
+        "react-native-ble-plx",
+        {
+          "neverForLocation": true,
+          "bluetoothAlwaysPermission": "AutoCares uses Bluetooth to find and connect to your BLE OBD-II adapter."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a534a5e7-a25a-42f6-8b92-2322ec38c40f"
+      }
+    }
+  }
+}
+

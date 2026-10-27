@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Animated,
   Modal,
@@ -93,8 +93,8 @@ customAlert.info = (title: string, message?: string, onConfirm?: () => void) => 
 
 export function CustomAlertModal() {
   const [alert, setAlert] = useState<CustomAlertOptions | null>(null);
-  const scale = useRef(new Animated.Value(0.88)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
+  const [scale] = useState(() => new Animated.Value(0.88));
+  const [opacity] = useState(() => new Animated.Value(0));
 
   const close = useCallback((callback?: () => void) => {
     Animated.parallel([
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(15, 23, 42, 0.65)', // Deep slate overlay
   },
   backdropPressable: {

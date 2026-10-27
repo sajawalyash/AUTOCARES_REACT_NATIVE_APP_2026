@@ -160,7 +160,7 @@ export default function VehiclesScreen() {
                 <PrimaryButton label="Add diagnostic" onPress={saveDiagnostic} />
                 <OutlineButton label="Close" onPress={() => setSelected(null)} />
               </Card>
-            ) : null
+            ) : undefined
           }
           renderItem={({ item }) => (
             <Card>

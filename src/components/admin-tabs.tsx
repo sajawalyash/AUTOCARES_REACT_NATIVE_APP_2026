@@ -57,7 +57,7 @@ export default function AdminTabs() {
         options={{
           title: 'Users',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'people' : 'people-outline'} color={color} size={22} />
+            <Ionicons name={focused ? 'people' : 'people-outline'} color={color as string} size={22} />
           ),
         }}
       />
@@ -68,7 +68,7 @@ export default function AdminTabs() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'shield-checkmark' : 'shield-checkmark-outline'}
-              color={color}
+              color={color as string}
               size={22}
             />
           ),
@@ -79,7 +79,7 @@ export default function AdminTabs() {
         options={{
           title: 'Oversight',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'list' : 'list-outline'} color={color} size={22} />
+            <Ionicons name={focused ? 'list' : 'list-outline'} color={color as string} size={22} />
           ),
         }}
       />
@@ -88,7 +88,7 @@ export default function AdminTabs() {
         options={{
           title: 'Analytics',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} color={color} size={22} />
+            <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} color={color as string} size={22} />
           ),
         }}
       />
@@ -97,7 +97,7 @@ export default function AdminTabs() {
         options={{
           title: 'Tools',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'construct' : 'construct-outline'} color={color} size={22} />
+            <Ionicons name={focused ? 'construct' : 'construct-outline'} color={color as string} size={22} />
           ),
         }}
       />

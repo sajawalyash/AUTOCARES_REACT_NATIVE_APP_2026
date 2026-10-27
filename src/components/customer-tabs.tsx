@@ -57,7 +57,7 @@ export default function CustomerTabs() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} color={color} size={22} />
+            <Ionicons name={focused ? 'home' : 'home-outline'} color={color as string} size={22} />
           ),
         }}
       />
@@ -66,7 +66,7 @@ export default function CustomerTabs() {
         options={{
           title: 'Mechanics',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'map' : 'map-outline'} color={color} size={22} />
+            <Ionicons name={focused ? 'map' : 'map-outline'} color={color as string} size={22} />
           ),
         }}
       />
@@ -77,7 +77,7 @@ export default function CustomerTabs() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline'}
-              color={color}
+              color={color as string}
               size={22}
             />
           ),
@@ -88,7 +88,7 @@ export default function CustomerTabs() {
         options={{
           title: 'History',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'time' : 'time-outline'} color={color} size={22} />
+            <Ionicons name={focused ? 'time' : 'time-outline'} color={color as string} size={22} />
           ),
         }}
       />
@@ -97,7 +97,7 @@ export default function CustomerTabs() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} color={color} size={22} />
+            <Ionicons name={focused ? 'person' : 'person-outline'} color={color as string} size={22} />
           ),
         }}
       />
