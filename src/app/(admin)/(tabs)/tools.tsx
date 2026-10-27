@@ -141,7 +141,7 @@ export default function AdminTools() {
             return (
               <Pressable
                 key={tool.route}
-                onPress={() => router.push(`/(admin)/(tabs)/${tool.route}`)}
+                onPress={() => router.push(`/(admin)/${tool.route}`)}
                 style={({ pressed }) => [styles.toolCard, pressed && styles.cardPressed]}
                 accessibilityRole="button"
                 accessibilityLabel={tool.title}>

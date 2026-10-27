@@ -12,12 +12,12 @@ import {
   View,
 } from 'react-native';
 
-import AdminSubscreenHeader from '../../../components/admin-subscreen-header';
-import { Card, EmptyState, ErrorText, LoadingState, Screen, StatusBadge } from '../../../components/ui';
-import { theme } from '../../../constants/autocares-theme';
-import { listAdminSupportTickets, recordAdminActivity, updateSupportTicketStatus } from '../../../lib/admin';
-import type { SupportTicket } from '../../../lib/types';
-import { useAuth } from '../../../providers/auth-provider';
+import AdminSubscreenHeader from '@/components/admin-subscreen-header';
+import { Card, EmptyState, ErrorText, LoadingState, Screen, StatusBadge } from '@/components/ui';
+import { theme } from '@/constants/autocares-theme';
+import { listAdminSupportTickets, recordAdminActivity, updateSupportTicketStatus } from '@/lib/admin';
+import type { SupportTicket } from '@/lib/types';
+import { useAuth } from '@/providers/auth-provider';
 
 type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
 
@@ -62,12 +62,10 @@ export default function AdminSupport() {
       return;
     }
 
-    // Update in local state immediately for responsive feedback
     setTickets((prev) =>
       prev.map((t) => (t.id === ticket.id ? { ...t, status: newStatus } : t))
     );
 
-    // Non-blocking activity logging
     if (user) {
       recordAdminActivity({
         actor_id: user.id,

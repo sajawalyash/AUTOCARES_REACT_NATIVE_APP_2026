@@ -11,11 +11,11 @@ import {
   View,
 } from 'react-native';
 
-import AdminSubscreenHeader from '../../../components/admin-subscreen-header';
-import { Card, EmptyState, ErrorText, LoadingState, Screen } from '../../../components/ui';
-import { theme } from '../../../constants/autocares-theme';
-import { deleteAdminRating, listAdminRatings, recordAdminActivity, type AdminRating } from '../../../lib/admin';
-import { useAuth } from '../../../providers/auth-provider';
+import AdminSubscreenHeader from '@/components/admin-subscreen-header';
+import { Card, EmptyState, ErrorText, LoadingState, Screen } from '@/components/ui';
+import { theme } from '@/constants/autocares-theme';
+import { deleteAdminRating, listAdminRatings, recordAdminActivity, type AdminRating } from '@/lib/admin';
+import { useAuth } from '@/providers/auth-provider';
 
 function StarRating({ stars }: { stars: number }) {
   return (
@@ -74,10 +74,8 @@ export default function AdminReviews() {
               return;
             }
 
-            // Immediately update list locally
             setRatings((prev) => prev.filter((r) => r.id !== rating.id));
 
-            // Non-blocking activity logging
             if (user) {
               recordAdminActivity({
                 actor_id: user.id,

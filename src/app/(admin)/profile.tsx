@@ -2,10 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import AdminSubscreenHeader from '../../../components/admin-subscreen-header';
-import { Card, Screen } from '../../../components/ui';
-import { theme } from '../../../constants/autocares-theme';
-import { useAuth } from '../../../providers/auth-provider';
+import AdminSubscreenHeader from '@/components/admin-subscreen-header';
+import { Card, Screen } from '@/components/ui';
+import { theme } from '@/constants/autocares-theme';
+import { useAuth } from '@/providers/auth-provider';
 
 export default function AdminProfile() {
   const { user, profile, signOut } = useAuth();

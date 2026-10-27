@@ -37,12 +37,12 @@ const shortcuts: ShortcutItem[] = [
     icon: 'construct',
     title: 'Request Help',
     desc: 'Instant roadside repair',
-    badge: 'Popular',
+    badge: 'POPULAR',
     color: '#0284C7',
     bgColor: '#E0F2FE',
     borderColor: '#BAE6FD',
     badgeBg: '#E0F2FE',
-    badgeText: '#0369A1',
+    badgeText: '#0284C7',
     badgeBorder: '#BAE6FD',
   },
   {
@@ -62,12 +62,12 @@ const shortcuts: ShortcutItem[] = [
     icon: 'sparkles',
     title: 'AI Assistant',
     desc: 'Symptom & engine triage',
-    badge: 'Smart',
+    badge: 'SMART',
     color: '#D97706',
     bgColor: '#FEF3C7',
     borderColor: '#FDE68A',
     badgeBg: '#FEF3C7',
-    badgeText: '#B45309',
+    badgeText: '#D97706',
     badgeBorder: '#FDE68A',
   },
   {
@@ -75,12 +75,12 @@ const shortcuts: ShortcutItem[] = [
     icon: 'hardware-chip',
     title: 'OBD-II Scanner',
     desc: 'Bluetooth ECU diagnostic',
-    badge: 'Live',
+    badge: 'LIVE',
     color: '#7C3AED',
     bgColor: '#EDE9FE',
     borderColor: '#DDD6FE',
     badgeBg: '#EDE9FE',
-    badgeText: '#6D28D9',
+    badgeText: '#7C3AED',
     badgeBorder: '#DDD6FE',
   },
   {
@@ -92,7 +92,7 @@ const shortcuts: ShortcutItem[] = [
     bgColor: '#EFF6FF',
     borderColor: '#BFDBFE',
     badgeBg: '#EFF6FF',
-    badgeText: '#1D4ED8',
+    badgeText: '#2563EB',
     badgeBorder: '#BFDBFE',
   },
   {
@@ -105,7 +105,7 @@ const shortcuts: ShortcutItem[] = [
     bgColor: '#FEE2E2',
     borderColor: '#FECACA',
     badgeBg: '#FEE2E2',
-    badgeText: '#B91C1C',
+    badgeText: '#DC2626',
     badgeBorder: '#FECACA',
     isSos: true,
   },
@@ -282,7 +282,7 @@ export default function CustomerHome() {
                     ]}>
                     <Ionicons name={item.icon} size={22} color={item.color} />
                   </View>
-                  {item.badge && (
+                  {item.badge ? (
                     <View
                       style={[
                         styles.miniBadge,
@@ -295,19 +295,25 @@ export default function CustomerHome() {
                         {item.badge}
                       </Text>
                     </View>
+                  ) : (
+                    <View style={styles.badgeSpacer} />
                   )}
                 </View>
 
                 <View style={styles.cardBody}>
                   <View style={styles.cardTitleRow}>
-                    <Text style={styles.cardTitle} numberOfLines={1}>
+                    <Text
+                      style={[styles.cardTitle, item.isSos && styles.sosTitle]}
+                      numberOfLines={1}>
                       {item.title}
                     </Text>
-                    <Ionicons
-                      name="arrow-forward"
-                      size={13}
-                      color={item.isSos ? '#DC2626' : theme.colors.muted}
-                    />
+                    <View style={[styles.cardActionCircle, item.isSos && styles.sosActionCircle]}>
+                      <Ionicons
+                        name="arrow-forward"
+                        size={11}
+                        color={item.isSos ? '#DC2626' : theme.colors.muted}
+                      />
+                    </View>
                   </View>
                   <Text style={styles.cardDesc} numberOfLines={2}>
                     {item.desc}
@@ -322,21 +328,36 @@ export default function CustomerHome() {
         <View style={styles.quickFooterRow}>
           <Pressable
             onPress={() => router.push('/(customer)/notifications')}
-            style={({ pressed }) => [styles.quickChip, pressed && styles.cardPressed]}>
-            <Ionicons name="notifications-outline" size={15} color={theme.colors.textSecondary} />
-            <Text style={styles.quickChipText}>Notifications</Text>
+            style={({ pressed }) => [styles.quickActionBtn, pressed && styles.cardPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Notifications">
+            <View style={[styles.quickActionIconBox, { backgroundColor: '#E0F2FE' }]}>
+              <Ionicons name="notifications-outline" size={15} color="#0284C7" />
+            </View>
+            <Text style={styles.quickActionLabel} numberOfLines={1}>Notifications</Text>
+            {unreadCount > 0 && <View style={styles.quickActionDot} />}
           </Pressable>
+
           <Pressable
             onPress={() => router.push('/(customer)/support')}
-            style={({ pressed }) => [styles.quickChip, pressed && styles.cardPressed]}>
-            <Ionicons name="headset-outline" size={15} color={theme.colors.textSecondary} />
-            <Text style={styles.quickChipText}>24/7 Support</Text>
+            style={({ pressed }) => [styles.quickActionBtn, pressed && styles.cardPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="24/7 Support">
+            <View style={[styles.quickActionIconBox, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="headset-outline" size={15} color="#D97706" />
+            </View>
+            <Text style={styles.quickActionLabel} numberOfLines={1}>24/7 Support</Text>
           </Pressable>
+
           <Pressable
             onPress={() => router.push('/(customer)/(tabs)/history')}
-            style={({ pressed }) => [styles.quickChip, pressed && styles.cardPressed]}>
-            <Ionicons name="time-outline" size={15} color={theme.colors.textSecondary} />
-            <Text style={styles.quickChipText}>History</Text>
+            style={({ pressed }) => [styles.quickActionBtn, pressed && styles.cardPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Service History">
+            <View style={[styles.quickActionIconBox, { backgroundColor: '#F1F5F9' }]}>
+              <Ionicons name="time-outline" size={15} color="#475569" />
+            </View>
+            <Text style={styles.quickActionLabel} numberOfLines={1}>History</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -551,71 +572,81 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   servicesHeader: {
-    marginTop: 6,
+    marginTop: 10,
     marginBottom: 4,
   },
   sectionSubtitle: {
     color: theme.colors.muted,
     fontSize: 13,
-    marginTop: 2,
+    marginTop: 3,
     fontWeight: '500',
+    lineHeight: 18,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     rowGap: 12,
-    marginTop: 10,
+    marginTop: 12,
   },
   card: {
     width: '48.2%',
-    backgroundColor: theme.colors.surface,
-    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: theme.colors.border,
+    borderColor: '#E2E8F0',
     padding: 14,
-    minHeight: 136,
+    minHeight: 148,
     justifyContent: 'space-between',
-    ...theme.shadows.card,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2.5,
   },
   cardPressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
+    opacity: 0.92,
+    transform: [{ scale: 0.985 }],
+  },
+  sosCard: {
+    backgroundColor: '#FFFBFB',
+    borderColor: '#FECACA',
   },
   cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
+    alignItems: 'flex-start',
+    marginBottom: 12,
+    minHeight: 46,
   },
   iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 13,
-    borderWidth: 1,
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   miniBadge: {
     borderWidth: 1,
     borderRadius: theme.radius.pill,
-    paddingHorizontal: 7,
-    paddingVertical: 2.5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     alignSelf: 'flex-start',
+    marginTop: 2,
   },
   miniBadgeText: {
     fontSize: 9.5,
     fontWeight: '800',
-    letterSpacing: 0.4,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
-  sosCard: {
-    backgroundColor: '#FFF7F7',
-    borderColor: '#FECACA',
-    borderWidth: 1.5,
+  badgeSpacer: {
+    width: 20,
+    height: 20,
   },
   cardBody: {
-    marginTop: 'auto',
+    justifyContent: 'flex-end',
   },
   cardTitleRow: {
     flexDirection: 'row',
@@ -626,13 +657,27 @@ const styles = StyleSheet.create({
   cardTitle: {
     flex: 1,
     color: theme.colors.text,
-    fontWeight: '700',
+    fontWeight: '800',
     fontSize: 14.5,
     letterSpacing: -0.2,
   },
+  sosTitle: {
+    color: '#DC2626',
+  },
+  cardActionCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sosActionCircle: {
+    backgroundColor: '#FEE2E2',
+  },
   cardDesc: {
     color: theme.colors.muted,
-    marginTop: 3,
+    marginTop: 4,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '400',
@@ -643,24 +688,46 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
     marginTop: 14,
+    marginBottom: 6,
   },
-  quickChip: {
+  quickActionBtn: {
     flex: 1,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    paddingHorizontal: 6,
     gap: 6,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    ...theme.shadows.card,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
   },
-  quickChipText: {
+  quickActionIconBox: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    color: theme.colors.textSecondary,
+    fontWeight: '700',
+    color: theme.colors.text,
+    letterSpacing: -0.1,
+  },
+  quickActionDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.colors.orange,
+    position: 'absolute',
+    top: 7,
+    right: 7,
   },
 });

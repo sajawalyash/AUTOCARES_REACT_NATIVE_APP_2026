@@ -14,12 +14,12 @@ import {
   View,
 } from 'react-native';
 
-import AdminSubscreenHeader from '../../../components/admin-subscreen-header';
-import { Card, EmptyState, ErrorText, LoadingState, PrimaryButton, Screen } from '../../../components/ui';
-import { theme } from '../../../constants/autocares-theme';
-import { listServiceCategories, recordAdminActivity, updateServiceCategory, upsertServiceCategory } from '../../../lib/admin';
-import type { ProblemType, ServiceCategory } from '../../../lib/types';
-import { useAuth } from '../../../providers/auth-provider';
+import AdminSubscreenHeader from '@/components/admin-subscreen-header';
+import { Card, EmptyState, ErrorText, LoadingState, PrimaryButton, Screen } from '@/components/ui';
+import { theme } from '@/constants/autocares-theme';
+import { listServiceCategories, recordAdminActivity, updateServiceCategory, upsertServiceCategory } from '@/lib/admin';
+import type { ProblemType, ServiceCategory } from '@/lib/types';
+import { useAuth } from '@/providers/auth-provider';
 
 const DEFAULT_CATEGORIES: { id: ProblemType; label: string; description: string }[] = [
   { id: 'flat_tire', label: 'Flat tire', description: 'Flat or damaged tire assistance and replacement' },
@@ -64,7 +64,6 @@ function CategoryItemCard({
     });
     setSaving(false);
     if (!success) {
-      // Revert if failed
       setLabel(category.label);
       setDescription(category.description);
       setIsActive(category.is_active);
@@ -180,7 +179,6 @@ export default function AdminCategories() {
       return false;
     }
 
-    // Non-blocking activity logging
     if (user) {
       recordAdminActivity({
         actor_id: user.id,

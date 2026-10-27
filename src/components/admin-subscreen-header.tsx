@@ -25,8 +25,11 @@ export default function AdminSubscreenHeader({
       onBack();
       return;
     }
-    // Navigate reliably back to Tools
-    router.replace('/(admin)/(tabs)/tools');
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(admin)/(tabs)/tools');
+    }
   }
 
   return (

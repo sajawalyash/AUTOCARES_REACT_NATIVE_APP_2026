@@ -101,12 +101,6 @@ export default function AdminTabs() {
           ),
         }}
       />
-      <Tabs.Screen name="categories" options={{ href: null }} />
-      <Tabs.Screen name="support" options={{ href: null }} />
-      <Tabs.Screen name="reviews" options={{ href: null }} />
-      <Tabs.Screen name="announcements" options={{ href: null }} />
-      <Tabs.Screen name="activity" options={{ href: null }} />
-      <Tabs.Screen name="profile" options={{ href: null }} />
     </Tabs>
   );
 }

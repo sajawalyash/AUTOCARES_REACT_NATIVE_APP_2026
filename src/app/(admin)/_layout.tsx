@@ -24,6 +24,12 @@ export default function AdminLayout() {
           },
         }}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="categories" />
+        <Stack.Screen name="support" />
+        <Stack.Screen name="reviews" />
+        <Stack.Screen name="announcements" />
+        <Stack.Screen name="activity" />
+        <Stack.Screen name="profile" />
       </Stack>
     </RoleGate>
   );

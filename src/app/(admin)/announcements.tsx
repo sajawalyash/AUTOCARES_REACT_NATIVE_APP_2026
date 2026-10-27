@@ -11,12 +11,12 @@ import {
   View,
 } from 'react-native';
 
-import AdminSubscreenHeader from '../../../components/admin-subscreen-header';
-import { Card, Screen } from '../../../components/ui';
-import { theme } from '../../../constants/autocares-theme';
-import { publishAnnouncement, recordAdminActivity } from '../../../lib/admin';
-import type { UserRole } from '../../../lib/types';
-import { useAuth } from '../../../providers/auth-provider';
+import AdminSubscreenHeader from '@/components/admin-subscreen-header';
+import { Card, Screen } from '@/components/ui';
+import { theme } from '@/constants/autocares-theme';
+import { publishAnnouncement, recordAdminActivity } from '@/lib/admin';
+import type { UserRole } from '@/lib/types';
+import { useAuth } from '@/providers/auth-provider';
 
 const AUDIENCES: { id: UserRole | 'all'; label: string; description: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   {
@@ -76,14 +76,11 @@ export default function AdminAnnouncements() {
               return;
             }
 
-            // Successfully delivered (or partial)
             const deliveredCount = result.recipientCount ?? 0;
 
-            // Clear inputs immediately to avoid accidental resend
             setTitle('');
             setBody('');
 
-            // Non-blocking activity log
             if (user) {
               recordAdminActivity({
                 actor_id: user.id,

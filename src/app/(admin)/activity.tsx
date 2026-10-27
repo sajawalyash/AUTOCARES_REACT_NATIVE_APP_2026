@@ -11,11 +11,11 @@ import {
   View,
 } from 'react-native';
 
-import AdminSubscreenHeader from '../../../components/admin-subscreen-header';
-import { Card, EmptyState, ErrorText, LoadingState, Screen } from '../../../components/ui';
-import { theme } from '../../../constants/autocares-theme';
-import { listAdminActivity } from '../../../lib/admin';
-import type { AdminActivityLog } from '../../../lib/types';
+import AdminSubscreenHeader from '@/components/admin-subscreen-header';
+import { Card, EmptyState, ErrorText, LoadingState, Screen } from '@/components/ui';
+import { theme } from '@/constants/autocares-theme';
+import { listAdminActivity } from '@/lib/admin';
+import type { AdminActivityLog } from '@/lib/types';
 
 const ENTITY_FILTERS = ['all', 'service_category', 'support_ticket', 'rating', 'announcement'] as const;
 
