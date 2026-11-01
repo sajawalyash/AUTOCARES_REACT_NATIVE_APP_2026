@@ -1019,4 +1019,21 @@ const styles = StyleSheet.create({
     opacity: 0.85,
     transform: [{ scale: 0.94 }],
   },
+  dashRejectionBox: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 10,
+  },
+  dashFindMechBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#DC2626',
+    borderRadius: 10,
+    height: 38,
+    gap: 6,
+  },
 });

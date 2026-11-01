@@ -1,22 +1,30 @@
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Avatar } from './avatar';
 import { theme } from '../constants/autocares-theme';
 import {
   callParticipant,
   getShortRequestRef,
+  normalizePhoneNumber,
   openWhatsAppChat,
   type WhatsAppContactRole,
 } from '../lib/whatsapp';
 
-interface WhatsAppContactCardProps {
+export interface WhatsAppContactCardProps {
   role: WhatsAppContactRole; // 'customer' = customer contacting mechanic; 'mechanic' = mechanic contacting customer
   requestId: string;
   phone: string | null | undefined;
   participantName?: string | null;
-  status?: string;
+  avatarUrl?: string | null;
+  workshopName?: string | null;
+  specialization?: string | null;
+  vehicleType?: string | null;
   vehicleDetails?: string | null;
-  compact?: boolean; // compact variant for dashboard cards
+  problemDescription?: string | null;
+  locationText?: string | null;
+  status?: string;
+  compact?: boolean;
 }
 
 export default function WhatsAppContactCard({
@@ -24,8 +32,14 @@ export default function WhatsAppContactCard({
   requestId,
   phone,
   participantName,
-  status,
+  avatarUrl,
+  workshopName,
+  specialization,
+  vehicleType,
   vehicleDetails,
+  problemDescription,
+  locationText,
+  status,
   compact = false,
 }: WhatsAppContactCardProps) {
   const isCustomer = role === 'customer';
@@ -36,7 +50,20 @@ export default function WhatsAppContactCard({
     : 'Customer';
   const requestRef = getShortRequestRef(requestId);
 
+  // Check if request is accepted or in active progress
+  const isAcceptedOrActive =
+    !status ||
+    ['accepted', 'on_the_way', 'en_route', 'arrived', 'in_progress', 'completed'].includes(status);
+
+  const { isValid, formatted } = normalizePhoneNumber(phone);
+  const displayPhone = isValid && formatted
+    ? formatted.startsWith('92')
+      ? `0${formatted.slice(2, 5)} ${formatted.slice(5)}`
+      : formatted
+    : phone || 'Phone not provided';
+
   function handleWhatsApp() {
+    if (!isAcceptedOrActive) return;
     openWhatsAppChat({
       phone,
       participantName: targetLabel,
@@ -46,6 +73,7 @@ export default function WhatsAppContactCard({
   }
 
   function handleCall() {
+    if (!isAcceptedOrActive) return;
     callParticipant(phone, targetLabel);
   }
 
@@ -54,20 +82,32 @@ export default function WhatsAppContactCard({
       <View style={styles.compactContainer}>
         <View style={styles.compactHeaderRow}>
           <View style={styles.compactNameBlock}>
-            <View style={styles.avatarMini}>
-              <Ionicons
-                name={isCustomer ? 'construct' : 'person'}
-                size={14}
-                color={theme.colors.primaryDark}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.compactLabel}>
-                {isCustomer ? 'Assigned Mechanic' : 'Customer'}
-              </Text>
+            {avatarUrl ? (
+              <Avatar url={avatarUrl} name={targetLabel} size={36} />
+            ) : (
+              <View style={styles.avatarMini}>
+                <Ionicons
+                  name={isCustomer ? 'construct' : 'person'}
+                  size={15}
+                  color={theme.colors.primaryDark}
+                />
+              </View>
+            )}
+            <View style={{ flex: 1, marginLeft: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.compactLabel}>
+                  {isCustomer ? 'Assigned Mechanic' : 'Customer'}
+                </Text>
+                {workshopName ? (
+                  <Text style={styles.compactWorkshop} numberOfLines={1}>
+                    · {workshopName}
+                  </Text>
+                ) : null}
+              </View>
               <Text style={styles.compactName} numberOfLines={1}>
                 {targetLabel}
               </Text>
+              <Text style={styles.compactPhoneText}>📞 {displayPhone}</Text>
             </View>
           </View>
           <View style={styles.refPill}>
@@ -75,39 +115,52 @@ export default function WhatsAppContactCard({
           </View>
         </View>
 
-        <View style={styles.compactButtonsRow}>
-          <Pressable
-            onPress={handleWhatsApp}
-            style={({ pressed }) => [styles.whatsappBtn, pressed && styles.btnPressed]}
-            accessibilityRole="button"
-            accessibilityLabel={`Chat with ${targetLabel} on WhatsApp`}>
-            <FontAwesome name="whatsapp" size={16} color="#FFFFFF" />
-            <Text style={styles.whatsappBtnText}>WhatsApp</Text>
-          </Pressable>
+        {isAcceptedOrActive ? (
+          <View style={styles.compactButtonsRow}>
+            <Pressable
+              onPress={handleWhatsApp}
+              style={({ pressed }) => [styles.whatsappBtn, pressed && styles.btnPressed]}
+              accessibilityRole="button"
+              accessibilityLabel={`Chat with ${targetLabel} on WhatsApp`}>
+              <FontAwesome name="whatsapp" size={15} color="#FFFFFF" />
+              <Text style={styles.whatsappBtnText}>WhatsApp</Text>
+            </Pressable>
 
-          <Pressable
-            onPress={handleCall}
-            style={({ pressed }) => [styles.callBtn, pressed && styles.btnPressed]}
-            accessibilityRole="button"
-            accessibilityLabel={`Call ${targetLabel}`}>
-            <Ionicons name="call" size={15} color={theme.colors.text} />
-            <Text style={styles.callBtnText}>Call</Text>
-          </Pressable>
-        </View>
+            <Pressable
+              onPress={handleCall}
+              style={({ pressed }) => [styles.callBtn, pressed && styles.btnPressed]}
+              accessibilityRole="button"
+              accessibilityLabel={`Call ${targetLabel}`}>
+              <Ionicons name="call" size={14} color="#0F172A" />
+              <Text style={styles.callBtnText}>Call Now</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.awaitingNoticeBox}>
+            <Text style={styles.awaitingNoticeText}>
+              Direct contact details unlocked upon request acceptance.
+            </Text>
+          </View>
+        )}
       </View>
     );
   }
 
   return (
     <View style={styles.card}>
+      {/* Header with Avatar & Details */}
       <View style={styles.cardHeader}>
-        <View style={styles.avatarLarge}>
-          <Ionicons
-            name={isCustomer ? 'construct' : 'person'}
-            size={22}
-            color={theme.colors.primaryDark}
-          />
-        </View>
+        {avatarUrl ? (
+          <Avatar url={avatarUrl} name={targetLabel} size={50} />
+        ) : (
+          <View style={styles.avatarLarge}>
+            <Ionicons
+              name={isCustomer ? 'construct' : 'person'}
+              size={24}
+              color={theme.colors.primaryDark}
+            />
+          </View>
+        )}
 
         <View style={styles.headerInfo}>
           <View style={styles.titleRow}>
@@ -118,42 +171,93 @@ export default function WhatsAppContactCard({
               <Text style={styles.refPillText}>{requestRef}</Text>
             </View>
           </View>
+
+          {/* Subtitle / Workshop / Role */}
           <Text style={styles.roleSubtext}>
-            {isCustomer ? 'AutoCares Certified Mechanic' : 'Assistance Requester'}
-            {status ? ` · ${status.replace('_', ' ').toUpperCase()}` : ''}
+            {isCustomer
+              ? workshopName
+                ? `${workshopName} · AutoCares Mechanic`
+                : 'AutoCares Certified Mechanic'
+              : 'Assistance Requester'}
+            {specialization ? ` · ${specialization}` : ''}
           </Text>
-          {vehicleDetails ? (
-            <Text style={styles.vehicleText} numberOfLines={1}>
-              Vehicle: {vehicleDetails}
-            </Text>
-          ) : null}
+
+          {/* Phone Display */}
+          <Text style={styles.phoneRowText}>
+            📞 <Text style={{ fontWeight: '700' }}>{displayPhone}</Text>
+          </Text>
         </View>
       </View>
 
-      <View style={styles.buttonsRow}>
-        <Pressable
-          onPress={handleWhatsApp}
-          style={({ pressed }) => [styles.fullWhatsAppBtn, pressed && styles.btnPressed]}
-          accessibilityRole="button"
-          accessibilityLabel={`Chat with ${targetLabel} on WhatsApp`}>
-          <FontAwesome name="whatsapp" size={18} color="#FFFFFF" />
-          <Text style={styles.fullWhatsAppBtnText}>Chat on WhatsApp</Text>
-        </Pressable>
+      {/* Extra Details Context Section */}
+      <View style={styles.detailsSection}>
+        {/* For Mechanic viewing Customer: Vehicle & Location Details */}
+        {!isCustomer && (
+          <>
+            {(vehicleType || vehicleDetails) && (
+              <View style={styles.detailRow}>
+                <Ionicons name="car-sport-outline" size={15} color={theme.colors.primary} />
+                <Text style={styles.detailText}>
+                  {vehicleType ? `[${vehicleType}] ` : ''}
+                  {vehicleDetails ?? 'Vehicle details shared'}
+                </Text>
+              </View>
+            )}
+            {problemDescription && (
+              <View style={styles.detailRow}>
+                <Ionicons name="alert-circle-outline" size={15} color={theme.colors.orange} />
+                <Text style={styles.detailText} numberOfLines={2}>
+                  Problem: {problemDescription}
+                </Text>
+              </View>
+            )}
+          </>
+        )}
 
-        <Pressable
-          onPress={handleCall}
-          style={({ pressed }) => [styles.fullCallBtn, pressed && styles.btnPressed]}
-          accessibilityRole="button"
-          accessibilityLabel={`Call ${targetLabel}`}>
-          <Ionicons name="call-outline" size={18} color={theme.colors.text} />
-          <Text style={styles.fullCallBtnText}>Call Phone</Text>
-        </Pressable>
+        {/* Location / ETA Row for Both */}
+        {locationText && (
+          <View style={styles.detailRow}>
+            <Ionicons name="location-outline" size={15} color={theme.colors.primary} />
+            <Text style={styles.detailText}>{locationText}</Text>
+          </View>
+        )}
       </View>
 
+      {/* Communication Buttons (WhatsApp Chat & Call Now) */}
+      {isAcceptedOrActive ? (
+        <View style={styles.buttonsRow}>
+          <Pressable
+            onPress={handleWhatsApp}
+            style={({ pressed }) => [styles.fullWhatsAppBtn, pressed && styles.btnPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={`Chat with ${targetLabel} on WhatsApp`}>
+            <FontAwesome name="whatsapp" size={18} color="#FFFFFF" />
+            <Text style={styles.fullWhatsAppBtnText}>WhatsApp Chat</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={handleCall}
+            style={({ pressed }) => [styles.fullCallBtn, pressed && styles.btnPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={`Call ${targetLabel}`}>
+            <Ionicons name="call" size={17} color="#0F172A" />
+            <Text style={styles.fullCallBtnText}>Call Now</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <View style={styles.awaitingNoticeBox}>
+          <Ionicons name="lock-closed-outline" size={14} color="#64748B" />
+          <Text style={styles.awaitingNoticeText}>
+            Direct contact actions will be available once the request is accepted.
+          </Text>
+        </View>
+      )}
+
+      {/* Guidance info caption */}
       <View style={styles.guidanceBox}>
-        <Ionicons name="information-circle-outline" size={14} color={theme.colors.muted} />
+        <Ionicons name="shield-checkmark-outline" size={13} color="#15803D" />
         <Text style={styles.guidanceText}>
-          Tapping WhatsApp opens your WhatsApp application with a pre-filled request reference.
+          Direct two-way coordination enabled. All communication is private and encrypted.
         </Text>
       </View>
     </View>
@@ -163,10 +267,10 @@ export default function WhatsAppContactCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1.5,
     borderColor: '#E2E8F0',
-    padding: 14,
+    padding: 16,
     marginBottom: 12,
     ...theme.shadows.card,
   },
@@ -174,12 +278,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   avatarLarge: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
+    width: 50,
+    height: 50,
+    borderRadius: 16,
     backgroundColor: theme.colors.primaryLight,
     borderWidth: 1.5,
     borderColor: theme.colors.primarySubtle,
@@ -196,105 +300,126 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   participantName: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
-    color: theme.colors.text,
-    letterSpacing: -0.2,
+    color: '#0F172A',
     flex: 1,
   },
   roleSubtext: {
-    fontSize: 11,
-    color: theme.colors.muted,
+    fontSize: 12,
+    color: '#64748B',
     marginTop: 2,
-    fontWeight: '600',
+    fontWeight: '500',
   },
-  vehicleText: {
+  phoneRowText: {
+    fontSize: 13,
+    color: '#0F172A',
+    marginTop: 3,
+  },
+  detailsSection: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 14,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  detailText: {
+    fontSize: 12.5,
+    color: '#334155',
+    flex: 1,
+    fontWeight: '500',
+  },
+  buttonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  fullWhatsAppBtn: {
+    flex: 1.2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#25D366',
+    borderRadius: 14,
+    height: 44,
+    gap: 8,
+  },
+  fullWhatsAppBtnText: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  fullCallBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    height: 44,
+    gap: 6,
+  },
+  fullCallBtnText: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  btnPressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.98 }],
+  },
+  guidanceBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+    paddingHorizontal: 4,
+  },
+  guidanceText: {
     fontSize: 11,
-    color: theme.colors.textSecondary,
-    marginTop: 2,
+    color: '#64748B',
+    flex: 1,
   },
   refPill: {
     backgroundColor: '#F1F5F9',
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderRadius: 6,
   },
   refPillText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
-    color: theme.colors.primaryDark,
+    color: '#0F172A',
     letterSpacing: 0.4,
   },
-  buttonsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 10,
-  },
-  fullWhatsAppBtn: {
-    flex: 1.4,
-    height: 44,
-    backgroundColor: '#25D366', // WhatsApp Official Green
-    borderRadius: 12,
+  awaitingNoticeBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+    padding: 10,
+    borderRadius: 10,
     gap: 8,
-    shadowColor: '#25D366',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  fullWhatsAppBtnText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.1,
-  },
-  fullCallBtn: {
-    flex: 1,
-    height: 44,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#CBD5E1',
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  fullCallBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: theme.colors.text,
-  },
-  guidanceBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  guidanceText: {
-    fontSize: 11,
-    color: theme.colors.muted,
-    lineHeight: 15,
+  awaitingNoticeText: {
+    fontSize: 12,
+    color: '#64748B',
     flex: 1,
   },
-  btnPressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.985 }],
-  },
-
-  // Compact variant styles for dashboard cards
   compactContainer: {
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 10,
+    marginTop: 8,
   },
   compactHeaderRow: {
     flexDirection: 'row',
@@ -305,68 +430,72 @@ const styles = StyleSheet.create({
   compactNameBlock: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     flex: 1,
   },
   avatarMini: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     backgroundColor: theme.colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   compactLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
-    color: theme.colors.muted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
+    color: '#64748B',
+  },
+  compactWorkshop: {
+    fontSize: 11,
+    color: '#0284C7',
+    fontWeight: '600',
+    flex: 1,
   },
   compactName: {
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '800',
-    color: theme.colors.text,
+    color: '#0F172A',
+  },
+  compactPhoneText: {
+    fontSize: 11.5,
+    color: '#334155',
+    fontWeight: '600',
+    marginTop: 1,
   },
   compactButtonsRow: {
     flexDirection: 'row',
     gap: 8,
   },
   whatsappBtn: {
-    flex: 1.2,
-    height: 38,
-    backgroundColor: '#25D366',
-    borderRadius: 10,
+    flex: 1.1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#25D366',
+    borderRadius: 10,
+    height: 36,
     gap: 6,
-    shadowColor: '#25D366',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 2,
   },
   whatsappBtnText: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   callBtn: {
-    flex: 0.8,
-    height: 38,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 10,
+    height: 36,
+    gap: 6,
   },
   callBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: theme.colors.text,
+    color: '#0F172A',
   },
 });

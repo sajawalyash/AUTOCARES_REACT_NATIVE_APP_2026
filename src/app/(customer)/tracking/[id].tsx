@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
   Card,
@@ -357,6 +357,8 @@ export default function TrackingScreen() {
             onPress={onCancel}
           />
         )}
+
+        <AdminSupportCard role="customer" style={{ marginTop: 14 }} />
       </ScrollView>
     </Screen>
   );

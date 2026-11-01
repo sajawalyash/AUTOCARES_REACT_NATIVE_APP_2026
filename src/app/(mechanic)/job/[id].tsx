@@ -144,7 +144,7 @@ export default function JobDetailScreen() {
     });
     if (updateError) customAlert.error('Update failed', updateError);
     else {
-      if (status === 'on_the_way' || status === 'en_route' || status === 'in_progress') startSharing();
+      if (status === 'on_the_way' || status === 'en_route' || status === 'arrived' || status === 'in_progress') startSharing();
       if (status === 'completed' || status === 'cancelled') stopSharing();
       load();
     }
@@ -341,21 +341,60 @@ export default function JobDetailScreen() {
         <Label>Work Performed</Label>
         <Field value={work} onChangeText={setWork} multiline style={{ minHeight: 70 }} />
 
-        {/* Job Workflow Controls (Sky Blue Primary) */}
+        {/* Job Workflow Controls (Lifecycle Management) */}
         <View style={styles.workflowSection}>
           {job.status === 'accepted' && (
-            <PrimaryButton label="Mark En Route 🚗" onPress={() => setStatus('en_route')} />
-          )}
-          {job.status === 'en_route' && (
-            <PrimaryButton label="Start Work on Vehicle 🔧" onPress={() => setStatus('in_progress')} />
-          )}
-          {['accepted', 'en_route', 'in_progress'].includes(job.status) && (
             <PrimaryButton
-              label="Complete Job ✓"
-              onPress={() => setStatus('completed')}
+              label="Start Travelling / On The Way 🚗"
+              onPress={() => setStatus('on_the_way')}
+            />
+          )}
+          {(job.status === 'on_the_way' || job.status === 'en_route') && (
+            <PrimaryButton
+              label="Mark Arrived at Location 📍"
+              onPress={() => setStatus('arrived')}
+            />
+          )}
+          {job.status === 'arrived' && (
+            <PrimaryButton
+              label="Start Service & Repair 🔧"
+              onPress={() => setStatus('in_progress')}
+            />
+          )}
+          {['accepted', 'on_the_way', 'en_route', 'arrived', 'in_progress'].includes(job.status) && (
+            <PrimaryButton
+              label="Complete Service ✓"
+              onPress={() => {
+                customAlert.confirm(
+                  'Complete Service',
+                  'Confirm that roadside assistance and repairs have been finished?',
+                  () => setStatus('completed'),
+                  undefined,
+                  'Yes, Complete',
+                  'Cancel'
+                );
+              }}
+            />
+          )}
+          {['accepted', 'on_the_way', 'en_route', 'arrived'].includes(job.status) && (
+            <OutlineButton
+              label="Cancel Assistance Request"
+              color={theme.colors.danger}
+              onPress={() => {
+                customAlert.confirm(
+                  'Cancel Assistance Job',
+                  'Are you sure you need to cancel this job? The customer will be informed immediately.',
+                  () => setStatus('cancelled'),
+                  undefined,
+                  'Cancel Job',
+                  'Keep Job',
+                  true
+                );
+              }}
             />
           )}
         </View>
+        <AdminSupportCard role="mechanic" style={{ marginTop: 16, marginBottom: 12 }} />
       </ScrollView>
     </Screen>
   );

@@ -211,6 +211,8 @@ export default function RequestScreen() {
           onPress={submit}
           disabled={submitting}
         />
+
+        <AdminSupportCard role="customer" style={{ marginTop: 16 }} />
       </ScrollView>
     </Screen>
   );

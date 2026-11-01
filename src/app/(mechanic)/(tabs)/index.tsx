@@ -9,15 +9,21 @@ import { Card, LoadingState, OutlineButton, Screen, StatusBadge, Subtitle, Title
 import WhatsAppContactCard from '../../../components/whatsapp-contact-card';
 import AdminSupportCard from '../../../components/admin-support-card';
 import { customAlert } from '../../../components/custom-alert';
-import { acceptRequest, rejectRequest, listPendingRequestsForMechanic } from '../../../lib/requests';
+import {
+  acceptRequest,
+  listMechanicJobs,
+  listPendingRequestsForMechanic,
+  rejectRequest,
+} from '../../../lib/requests';
 import { distanceKm, etaMinutesFromDistance } from '../../../lib/geo';
 import { getCurrentCoords } from '../../../lib/location';
-import { normalizePhoneNumber } from '../../../lib/whatsapp';
+import {
+  normalizePhoneNumber,
+  openWhatsAppSupport,
+} from '../../../lib/whatsapp';
 import { theme } from '../../../constants/autocares-theme';
 import { getMechanicProfile } from '../../../lib/mechanics';
-import { listMechanicJobs, listPendingRequests } from '../../../lib/requests';
 import type { MechanicProfile, ServiceRequest } from '../../../lib/types';
-import { openWhatsAppSupport } from '../../../lib/whatsapp';
 import { useAuth } from '../../../providers/auth-provider';
 import { useNotifications } from '../../../providers/notification-provider';
 
@@ -282,9 +288,18 @@ export default function MechanicHome() {
                       💬 {item.description}
                     </Text>
                   ) : null}
-                  <Text style={{ fontSize: 12, color: '#0284C7', fontWeight: '600', marginBottom: 8 }}>
-                    📍 {item.customer_lat != null ? `Location: ${item.customer_lat.toFixed(4)}, ${item.customer_lng?.toFixed(4)}` : 'Location shared'} · Diagnosis: Rs. 300
-                  </Text>
+                  {(() => {
+                    let distanceStr = item.customer_lat != null ? `Location: ${item.customer_lat.toFixed(4)}, ${item.customer_lng?.toFixed(4)}` : 'Location shared';
+                    if (mechanic?.latitude != null && mechanic?.longitude != null && item.customer_lat != null && item.customer_lng != null) {
+                      const km = distanceKm(mechanic.latitude, mechanic.longitude, item.customer_lat, item.customer_lng);
+                      distanceStr = `${km.toFixed(1)} km away (~${etaMinutesFromDistance(km)} mins)`;
+                    }
+                    return (
+                      <Text style={{ fontSize: 12, color: '#0284C7', fontWeight: '600', marginBottom: 8 }}>
+                        📍 {distanceStr} · Diagnosis: Rs. 300
+                      </Text>
+                    );
+                  })()}
 
                   {/* Accept / Reject Buttons */}
                   <View style={{ flexDirection: 'row', gap: 10 }}>
