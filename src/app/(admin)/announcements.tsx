@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,6 +12,7 @@ import {
 
 import AdminSubscreenHeader from '@/components/admin-subscreen-header';
 import { Card, Screen } from '@/components/ui';
+import { customAlert } from '../../components/custom-alert';
 import { theme } from '@/constants/autocares-theme';
 import { publishAnnouncement, recordAdminActivity } from '@/lib/admin';
 import type { UserRole } from '@/lib/types';
@@ -51,64 +51,62 @@ export default function AdminAnnouncements() {
     const trimmedBody = body.trim();
 
     if (!trimmedTitle || !trimmedBody) {
-      Alert.alert('Missing details', 'Please enter both an announcement title and a message body.');
+      customAlert.warning('Missing details', 'Please enter both an announcement title and a message body.');
       return;
     }
 
-    Alert.alert(
-      'Confirm broadcast',
-      `Are you sure you want to broadcast this announcement to "${AUDIENCES.find((a) => a.id === role)?.label}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Send Announcement',
-          onPress: async () => {
-            setSending(true);
-            const result = await publishAnnouncement({
+    const audienceLabel = AUDIENCES.find((a) => a.id === role)?.label || role;
+    customAlert.confirm(
+      'Confirm Broadcast',
+      `Are you sure you want to broadcast this announcement to "${audienceLabel}"?`,
+      async () => {
+        setSending(true);
+        const result = await publishAnnouncement({
+          title: trimmedTitle,
+          body: trimmedBody,
+          role,
+        });
+        setSending(false);
+
+        if (result.error && !result.recipientCount) {
+          customAlert.error('Could not send announcement', result.error);
+          return;
+        }
+
+        const deliveredCount = result.recipientCount ?? 0;
+
+        setTitle('');
+        setBody('');
+
+        if (user) {
+          recordAdminActivity({
+            actor_id: user.id,
+            action: 'sent announcement',
+            entity_type: 'announcement',
+            details: {
               title: trimmedTitle,
-              body: trimmedBody,
-              role,
-            });
-            setSending(false);
+              audience: role,
+              recipient_count: deliveredCount,
+              error: result.error ?? null,
+            },
+          }).catch(() => {});
+        }
 
-            if (result.error && !result.recipientCount) {
-              Alert.alert('Could not send announcement', result.error);
-              return;
-            }
-
-            const deliveredCount = result.recipientCount ?? 0;
-
-            setTitle('');
-            setBody('');
-
-            if (user) {
-              recordAdminActivity({
-                actor_id: user.id,
-                action: 'sent announcement',
-                entity_type: 'announcement',
-                details: {
-                  title: trimmedTitle,
-                  audience: role,
-                  recipient_count: deliveredCount,
-                  error: result.error ?? null,
-                },
-              }).catch(() => {});
-            }
-
-            if (result.error) {
-              Alert.alert(
-                'Partially delivered',
-                `Delivered to ${deliveredCount} users before an error occurred: ${result.error}`
-              );
-            } else {
-              Alert.alert(
-                'Announcement broadcasted',
-                `Delivered successfully to ${deliveredCount} user${deliveredCount === 1 ? '' : 's'}.`
-              );
-            }
-          },
-        },
-      ]
+        if (result.error) {
+          customAlert.warning(
+            'Partially delivered',
+            `Delivered to ${deliveredCount} users before an error occurred: ${result.error}`
+          );
+        } else {
+          customAlert.success(
+            'Announcement broadcasted',
+            `Delivered successfully to ${deliveredCount} user${deliveredCount === 1 ? '' : 's'}.`
+          );
+        }
+      },
+      undefined,
+      'Send Announcement',
+      'Cancel'
     );
   }
 

@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
-  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -13,6 +12,7 @@ import {
 
 import AdminSubscreenHeader from '@/components/admin-subscreen-header';
 import { Card, EmptyState, ErrorText, LoadingState, Screen } from '@/components/ui';
+import { customAlert } from '../../components/custom-alert';
 import { theme } from '@/constants/autocares-theme';
 import { deleteAdminRating, listAdminRatings, recordAdminActivity, type AdminRating } from '@/lib/admin';
 import { useAuth } from '@/providers/auth-provider';
@@ -56,21 +56,16 @@ export default function AdminReviews() {
   );
 
   function moderate(rating: AdminRating) {
-    Alert.alert(
+    customAlert.confirm(
       'Remove review?',
       'This will permanently delete the review and recalculate the mechanic\'s rating average.',
-      [
-        { text: 'Keep review', style: 'cancel' },
-        {
-          text: 'Delete review',
-          style: 'destructive',
-          onPress: async () => {
+      async () => {
             setDeletingId(rating.id);
             const result = await deleteAdminRating(rating.id);
             setDeletingId(null);
 
             if (result.error) {
-              Alert.alert('Could not remove review', result.error);
+              customAlert.error('Could not remove review', result.error);
               return;
             }
 
@@ -90,10 +85,12 @@ export default function AdminReviews() {
               }).catch(() => {});
             }
 
-            Alert.alert('Review deleted', 'The review has been removed.');
+            customAlert.success('Review deleted', 'The review has been removed.');
           },
-        },
-      ]
+      undefined,
+      'Delete review',
+      'Keep review',
+      true
     );
   }
 

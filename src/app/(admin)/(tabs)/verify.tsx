@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 
 import AutoCaresLogo from '../../../components/autocares-logo';
@@ -14,6 +14,7 @@ import {
   Subtitle,
   Title,
 } from '../../../components/ui';
+import { customAlert } from '../../../components/custom-alert';
 import { theme } from '../../../constants/autocares-theme';
 import { listAdminMechanicProfiles, recordAdminActivity } from '../../../lib/admin';
 import { setVerificationStatus } from '../../../lib/mechanics';
@@ -45,7 +46,7 @@ export default function AdminVerify() {
   async function decide(userId: string, status: 'approved' | 'rejected') {
     const result = await setVerificationStatus(userId, status);
     if (result.error) {
-      Alert.alert('Failed', result.error);
+      customAlert.error('Failed', result.error);
       return;
     }
     if (user) {
@@ -55,7 +56,7 @@ export default function AdminVerify() {
         entity_type: 'mechanic_profile',
         entity_id: userId,
       });
-      if (log.error) Alert.alert('Decision saved, but activity log failed', log.error);
+      if (log.error) customAlert.warning('Decision saved, but activity log failed', log.error);
     }
     const notification = await createNotification({
       user_id: userId,
@@ -66,7 +67,7 @@ export default function AdminVerify() {
           : 'Your mechanic application was rejected. Contact support for details.',
     });
     if (notification.error) {
-      Alert.alert('Decision saved, but notification failed', notification.error);
+      customAlert.warning('Decision saved, but notification failed', notification.error);
     }
     load();
   }

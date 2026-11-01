@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AutoCaresLogo from '../../../components/autocares-logo';
 import { StatusBadge } from '../../../components/ui';
 import WhatsAppContactCard from '../../../components/whatsapp-contact-card';
+import AdminSupportCard from '../../../components/admin-support-card';
 import { supabase } from '../../../lib/supabase';
 import { theme } from '../../../constants/autocares-theme';
 import { go } from '../../../lib/nav';
@@ -126,7 +127,7 @@ export default function CustomerHome() {
     const { requests } = await listCustomerRequests(user.id);
     setActive(
       requests.filter((r) =>
-        ['pending', 'accepted', 'en_route', 'in_progress'].includes(r.status)
+        ['pending', 'accepted', 'rejected', 'on_the_way', 'en_route', 'arrived', 'in_progress'].includes(r.status)
       )
     );
   }, [user]);
@@ -246,34 +247,10 @@ export default function CustomerHome() {
           </Pressable>
         </View>
 
-        {/* 24/7 WhatsApp Roadside Helpline Banner */}
-        <Pressable
-          style={({ pressed }) => [styles.whatsappHelplineBanner, pressed && styles.cardPressed]}
-          onPress={() => openWhatsAppSupport('customer')}
-          accessibilityRole="button"
-          accessibilityLabel="AutoCares 24/7 WhatsApp Roadside Helpline">
-          <View style={styles.whatsappHelplineLeft}>
-            <View style={styles.whatsappHelplineIconBox}>
-              <FontAwesome name="whatsapp" size={26} color="#FFFFFF" />
-            </View>
-            <View style={styles.whatsappHelplineContent}>
-              <View style={styles.whatsappHelplineTitleRow}>
-                <Text style={styles.whatsappHelplineTitle}>24/7 WhatsApp Helpline</Text>
-                <View style={styles.whatsappLiveBadge}>
-                  <View style={styles.whatsappLiveDot} />
-                  <Text style={styles.whatsappLiveText}>ONLINE</Text>
-                </View>
-              </View>
-              <Text style={styles.whatsappHelplineSub}>
-                Instant roadside breakdown support & live mechanic dispatch
-              </Text>
-            </View>
-          </View>
-          <View style={styles.whatsappHelplineAction}>
-            <Text style={styles.whatsappChatActionText}>Chat</Text>
-            <Ionicons name="chevron-forward" size={16} color="#25D366" />
-          </View>
-        </Pressable>
+        {/* 24/7 AutoCares Admin Helpline Card */}
+        <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+          <AdminSupportCard role="customer" style={{ marginBottom: 0 }} />
+        </View>
 
         {/* Active Requests */}
         {active.length > 0 && (
@@ -294,8 +271,9 @@ export default function CustomerHome() {
                   : null;
               const total = diag + (rep ?? 0);
               const isAssigned =
-                ['accepted', 'en_route', 'in_progress'].includes(req.status) &&
+                ['accepted', 'on_the_way', 'en_route', 'arrived', 'in_progress'].includes(req.status) &&
                 Boolean(req.mechanic_id);
+              const isRejected = req.status === 'rejected';
 
               return (
                 <View key={req.id} style={styles.activeCard}>
@@ -318,7 +296,27 @@ export default function CustomerHome() {
                     </View>
                   </Pressable>
 
-                  {isAssigned ? (
+                  {isRejected ? (
+                    <View style={styles.dashRejectionBox}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <Ionicons name="alert-circle" size={18} color="#DC2626" />
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#B91C1C' }}>
+                          Mechanic Was Unavailable
+                        </Text>
+                      </View>
+                      <Text style={{ fontSize: 12, color: '#7F1D1D', marginBottom: 8 }}>
+                        The mechanic cannot accept this request. Tap below to find another available technician.
+                      </Text>
+                      <Pressable
+                        style={({ pressed }) => [styles.dashFindMechBtn, pressed && styles.btnPressed]}
+                        onPress={() => router.push('/(customer)/(tabs)/mechanics')}>
+                        <Ionicons name="search" size={14} color="#FFFFFF" />
+                        <Text style={{ fontSize: 12.5, fontWeight: '700', color: '#FFFFFF' }}>
+                          Find Another Mechanic
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ) : isAssigned ? (
                     <WhatsAppContactCard
                       compact
                       role="customer"

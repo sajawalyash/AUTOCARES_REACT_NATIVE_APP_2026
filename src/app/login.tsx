@@ -2,7 +2,6 @@ import { Link } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -15,6 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AutoCaresLogo from '../components/autocares-logo';
+import { customAlert } from '../components/custom-alert';
 import { theme } from '../constants/autocares-theme';
 import { replace } from '../lib/nav';
 import { useAuth } from '../providers/auth-provider';
@@ -28,7 +28,7 @@ export default function LoginScreen() {
 
   async function handleLogin() {
     if (!email.trim() || !password) {
-      Alert.alert('Missing details', 'Enter your email and password to continue.');
+      customAlert.warning('Missing details', 'Enter your email and password to continue.');
       return;
     }
 
@@ -41,7 +41,7 @@ export default function LoginScreen() {
         error === 'Invalid login credentials'
           ? 'Invalid email or password. If you do not have an account yet, tap Register below.'
           : error;
-      Alert.alert('Login failed', msg);
+      customAlert.error('Login failed', msg);
       return;
     }
 

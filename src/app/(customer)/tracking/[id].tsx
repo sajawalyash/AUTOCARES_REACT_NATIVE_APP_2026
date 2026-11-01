@@ -1,6 +1,7 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
   Card,
@@ -14,6 +15,9 @@ import {
 } from '../../../components/ui';
 import MapView, { Marker } from '../../../components/roadside-map';
 import WhatsAppContactCard from '../../../components/whatsapp-contact-card';
+import AdminSupportCard from '../../../components/admin-support-card';
+import { openWhatsAppSupport, getShortRequestRef } from '../../../lib/whatsapp';
+import { customAlert } from '../../../components/custom-alert';
 import { theme } from '../../../constants/autocares-theme';
 import { useProblemLabels } from '../../../hooks/use-problem-labels';
 import { confirmServicePayment, formatPKR } from '../../../lib/payments';
@@ -62,18 +66,33 @@ export default function TrackingScreen() {
     const { success, error: payError, message } = await confirmServicePayment(id, type);
     setConfirmingPayment(false);
     if (!success || payError) {
-      Alert.alert('Payment Confirmation', payError ?? 'Could not confirm payment.');
+      customAlert.error('Payment Confirmation', payError ?? 'Could not confirm payment.');
     } else {
-      Alert.alert('Payment Recorded', message ?? 'Payment confirmed successfully.');
+      customAlert.success('Payment Recorded', message ?? 'Payment confirmed successfully.');
       load();
     }
   }
 
-  async function onCancel() {
+  function onCancel() {
     if (!id) return;
-    const { error: cancelError } = await cancelRequest(id);
-    if (cancelError) setError(cancelError);
-    else load();
+    customAlert.confirm(
+      'Cancel Assistance Request',
+      'Are you sure you want to cancel this roadside assistance request? A mechanic may already be assigned or heading your way.',
+      async () => {
+        const { error: cancelError } = await cancelRequest(id);
+        if (cancelError) {
+          setError(cancelError);
+          customAlert.error('Could Not Cancel', cancelError);
+        } else {
+          customAlert.info('Request Cancelled', 'Your roadside assistance request has been cancelled.');
+          load();
+        }
+      },
+      undefined,
+      'Yes, Cancel',
+      'Keep Request',
+      true
+    );
   }
 
   if (loading) {
@@ -126,13 +145,72 @@ export default function TrackingScreen() {
         <ErrorText message={error} />
         <ErrorText message={categoryError} />
 
-        {/* Assigned Mechanic WhatsApp & Call Contact Card */}
-        {['accepted', 'en_route', 'in_progress'].includes(request.status) && (
+        {/* Rejection Notification Card */}
+        {request.status === 'rejected' && (
+          <View style={styles.rejectionCard}>
+            <View style={styles.rejectionHeader}>
+              <View style={styles.rejectionIconCircle}>
+                <Ionicons name="alert-circle" size={24} color="#DC2626" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rejectionTitle}>Mechanic Cannot Accept</Text>
+                <Text style={styles.rejectionSub}>
+                  The selected technician is unavailable to take this request.
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.rejectionMessage}>
+              You can connect with another nearby verified mechanic right now, or contact AutoCares 24/7 Support for live assistance.
+            </Text>
+            <View style={styles.rejectionButtonsRow}>
+              <Pressable
+                style={({ pressed }) => [styles.findMechanicBtn, pressed && styles.btnPressed]}
+                onPress={() => router.replace('/(customer)/(tabs)/mechanics')}>
+                <Ionicons name="search" size={16} color="#FFFFFF" />
+                <Text style={styles.findMechanicBtnText}>Find Another Mechanic</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.rejectionHelplineBtn, pressed && styles.btnPressed]}
+                onPress={() => openWhatsAppSupport('customer', `Request ${getShortRequestRef(request.id)} was rejected`)}>
+                <FontAwesome name="whatsapp" size={16} color="#15803D" />
+                <Text style={styles.rejectionHelplineBtnText}>24/7 Helpline</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+
+        {/* Pending Awaiting Mechanic Card */}
+        {request.status === 'pending' && (
+          <View style={styles.pendingCard}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={styles.pendingIconCircle}>
+                <Ionicons name="hourglass-outline" size={20} color="#D97706" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.pendingCardTitle}>Awaiting Mechanic Confirmation</Text>
+                <Text style={styles.pendingCardSub}>
+                  Your request has been dispatched. The mechanic is reviewing the details to accept or decline.
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Assigned Mechanic Two-Way Contact Card */}
+        {['accepted', 'on_the_way', 'en_route', 'arrived', 'in_progress'].includes(request.status) && (
           <WhatsAppContactCard
             role="customer"
             requestId={request.id}
             phone={request.mechanic?.phone}
             participantName={request.mechanic?.full_name}
+            avatarUrl={request.mechanic?.avatar_url}
+            workshopName={request.mechanic?.workshop_name}
+            specialization={request.mechanic?.mechanic_type}
+            locationText={
+              request.estimated_arrival_minutes != null
+                ? `ETA: ~${request.estimated_arrival_minutes} mins`
+                : 'ETA: Updating in real-time'
+            }
             status={request.status}
           />
         )}
@@ -272,7 +350,7 @@ export default function TrackingScreen() {
           </View>
         </Card>
 
-        {['pending', 'accepted', 'en_route'].includes(request.status) && (
+        {['pending', 'accepted', 'on_the_way', 'en_route'].includes(request.status) && (
           <OutlineButton
             label="Cancel Request"
             color={theme.colors.danger}
@@ -288,6 +366,113 @@ const styles = StyleSheet.create({
   scroll: {
     paddingBottom: 36,
   },
+
+  rejectionCard: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1.5,
+    borderColor: '#FECACA',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 14,
+  },
+  rejectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  rejectionIconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rejectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#991B1B',
+  },
+  rejectionSub: {
+    fontSize: 12,
+    color: '#B91C1C',
+    marginTop: 1,
+  },
+  rejectionMessage: {
+    fontSize: 12.5,
+    color: '#7F1D1D',
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  rejectionButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  findMechanicBtn: {
+    flex: 1.3,
+    height: 44,
+    backgroundColor: '#DC2626',
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  findMechanicBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  rejectionHelplineBtn: {
+    flex: 1,
+    height: 44,
+    backgroundColor: '#DCFCE7',
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  rejectionHelplineBtnText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#15803D',
+  },
+  pendingCard: {
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+  },
+  pendingIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingCardTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  pendingCardSub: {
+    fontSize: 12,
+    color: '#B45309',
+    marginTop: 2,
+    lineHeight: 17,
+  },
+  btnPressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.98 }],
+  },
+
   topStatusRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

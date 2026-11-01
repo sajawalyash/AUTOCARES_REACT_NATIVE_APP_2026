@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 
 import {
@@ -12,6 +12,7 @@ import {
   Subtitle,
   Title,
 } from '../../../components/ui';
+import { customAlert } from '../../../components/custom-alert';
 import { theme } from '../../../constants/autocares-theme';
 import { useProblemLabels } from '../../../hooks/use-problem-labels';
 import { formatPKR } from '../../../lib/payments';
@@ -65,7 +66,7 @@ export default function AdminOversight() {
   async function toggleDispute(item: ServiceRequest) {
     const result = await setRequestDisputeFlag(item.id, !item.dispute_flag);
     if (result.error) {
-      Alert.alert('Failed', result.error);
+      customAlert.error('Failed', result.error);
       return;
     }
     if (user) {
@@ -75,7 +76,7 @@ export default function AdminOversight() {
         entity_type: 'service_request',
         entity_id: item.id,
       });
-      if (log.error) Alert.alert('Request updated, but activity log failed', log.error);
+      if (log.error) customAlert.warning('Request updated, but activity log failed', log.error);
     }
     load();
   }

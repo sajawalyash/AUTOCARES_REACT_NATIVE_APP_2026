@@ -2,7 +2,6 @@ import { Link, router } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -15,6 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AutoCaresLogo from '../components/autocares-logo';
+import { customAlert } from '../components/custom-alert';
 import { theme } from '../constants/autocares-theme';
 import type { MechanicType, VehicleType } from '../lib/types';
 import { useAuth, type SignUpRole } from '../providers/auth-provider';
@@ -55,22 +55,22 @@ export default function RegisterScreen() {
 
   async function handleRegister() {
     if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone) {
-      Alert.alert('Missing details', 'Fill in your first name, last name, email, and phone.');
+      customAlert.warning('Missing details', 'Fill in your first name, last name, email, and phone.');
       return;
     }
 
     if (!/^\d{11}$/.test(phone)) {
-      Alert.alert('Invalid phone number', 'Enter a phone number with exactly 11 digits.');
+      customAlert.warning('Invalid phone number', 'Enter a phone number with exactly 11 digits.');
       return;
     }
 
     if (role === 'mechanic') {
       if (!businessName.trim()) {
-        Alert.alert('Business name required', 'Enter your business name.');
+        customAlert.warning('Business name required', 'Enter your business name.');
         return;
       }
       if (!/^\d{13}$/.test(cnicNumber)) {
-        Alert.alert('Invalid CNIC', 'Enter your CNIC number using exactly 13 digits.');
+        customAlert.warning('Invalid CNIC', 'Enter your CNIC number using exactly 13 digits.');
         return;
       }
       if (
@@ -79,11 +79,11 @@ export default function RegisterScreen() {
           !Number.isSafeInteger(Number(yearsExperience)) ||
           Number(yearsExperience) > 2_147_483_647)
       ) {
-        Alert.alert('Invalid experience', 'Enter years of experience as a valid whole number.');
+        customAlert.warning('Invalid experience', 'Enter years of experience as a valid whole number.');
         return;
       }
       if (!mechanicType) {
-        Alert.alert('Mechanic type required', 'Select Car Mechanic or Bike Mechanic.');
+        customAlert.warning('Mechanic type required', 'Select Car Mechanic or Bike Mechanic.');
         return;
       }
     }
@@ -93,25 +93,22 @@ export default function RegisterScreen() {
       !/[A-Z]/.test(password) ||
       !/\d/.test(password)
     ) {
-      Alert.alert(
-        'Weak password',
-        'Use at least 8 characters, including at least one uppercase letter and one number.'
-      );
+      customAlert.warning('Weak password', 'Use at least 8 characters, including at least one uppercase letter and one number.');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Passwords do not match', 'Enter the same password in both password fields.');
+      customAlert.warning('Passwords do not match', 'Enter the same password in both password fields.');
       return;
     }
 
     if (role === 'customer' && !vehicleType) {
-      Alert.alert('Vehicle required', 'Select your vehicle type.');
+      customAlert.warning('Vehicle required', 'Select your vehicle type.');
       return;
     }
 
     if (!acceptedTerms) {
-      Alert.alert('Agreement required', 'Agree to the Terms of Service and Privacy Policy to continue.');
+      customAlert.warning('Agreement required', 'Agree to the Terms of Service and Privacy Policy to continue.');
       return;
     }
 
@@ -132,16 +129,12 @@ export default function RegisterScreen() {
     setIsSubmitting(false);
 
     if (error) {
-      Alert.alert('Registration failed', error);
+      customAlert.error('Registration failed', error);
       return;
     }
 
     if (needsEmailConfirmation) {
-      Alert.alert(
-        'Confirm your email',
-        'Account created. Check your inbox to confirm your email, then log in.',
-        [{ text: 'OK', onPress: () => router.replace('/login') }]
-      );
+      customAlert.success('Confirm your email', 'Account created. Check your inbox to confirm your email, then log in.', () => router.replace('/login'));
       return;
     }
 

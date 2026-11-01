@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
   Card,
@@ -15,8 +15,10 @@ import {
   Subtitle,
   Title,
 } from '../../../components/ui';
+import { customAlert } from '../../../components/custom-alert';
 import { theme } from '../../../constants/autocares-theme';
 import WhatsAppContactCard from '../../../components/whatsapp-contact-card';
+import AdminSupportCard from '../../../components/admin-support-card';
 import { useProblemLabels } from '../../../hooks/use-problem-labels';
 import { getCurrentCoords } from '../../../lib/location';
 import {
@@ -74,7 +76,7 @@ export default function JobDetailScreen() {
     if (!user || !id) return;
     const loc = await getCurrentCoords();
     if (!loc.coords) {
-      Alert.alert('Location', loc.error ?? 'Permission required');
+      customAlert.warning('Location', loc.error ?? 'Permission required');
       return;
     }
     await upsertMechanicLocation({
@@ -89,10 +91,7 @@ export default function JobDetailScreen() {
     setSharing(true);
     shareLocationOnce();
     timer.current = setInterval(shareLocationOnce, 15000);
-    Alert.alert(
-      'Location Sharing Active',
-      'Your live GPS coordinates are being shared with the customer while this job is active.'
-    );
+    customAlert.info('Location Sharing Active', 'Your live GPS coordinates are being shared with the customer while this job is active.');
   }
 
   function stopSharing() {
@@ -104,7 +103,7 @@ export default function JobDetailScreen() {
     if (!id) return;
     const numericCost = Number(cost);
     if (!cost.trim() || Number.isNaN(numericCost) || numericCost < 0) {
-      Alert.alert('Invalid amount', 'Please enter a valid repair charge amount (PKR).');
+      customAlert.warning('Invalid amount', 'Please enter a valid repair charge amount (PKR).');
       return;
     }
     setSubmittingCharges(true);
@@ -114,14 +113,9 @@ export default function JobDetailScreen() {
     });
     setSubmittingCharges(false);
     if (submitError) {
-      Alert.alert('Submission failed', submitError);
+      customAlert.error('Submission failed', submitError);
     } else {
-      Alert.alert(
-        'Charges submitted',
-        `Repair charges of ${formatPKR(numericCost)} submitted. Total customer bill is ${formatPKR(
-          numericCost + (request?.diagnosis_fee ?? FIXED_DIAGNOSIS_FEE)
-        )}.`
-      );
+      customAlert.success('Charges submitted', `Repair charges of ${formatPKR(numericCost)} submitted. Total customer bill is ${formatPKR(numericCost + (request?.diagnosis_fee ?? FIXED_DIAGNOSIS_FEE))}.`);
       load();
     }
   }
@@ -132,9 +126,9 @@ export default function JobDetailScreen() {
     const { success, error: payError, message } = await confirmServicePayment(id, type);
     setConfirmingPayment(false);
     if (!success || payError) {
-      Alert.alert('Confirmation failed', payError ?? 'Could not confirm payment.');
+      customAlert.error('Confirmation failed', payError ?? 'Could not confirm payment.');
     } else {
-      Alert.alert('Payment recorded', message ?? 'Cash payment confirmed.');
+      customAlert.success('Payment recorded', message ?? 'Cash payment confirmed.');
       load();
     }
   }
@@ -148,9 +142,9 @@ export default function JobDetailScreen() {
       repair_charges: numericCost,
       final_cost: numericCost,
     });
-    if (updateError) Alert.alert('Update failed', updateError);
+    if (updateError) customAlert.error('Update failed', updateError);
     else {
-      if (status === 'en_route' || status === 'in_progress') startSharing();
+      if (status === 'on_the_way' || status === 'en_route' || status === 'in_progress') startSharing();
       if (status === 'completed' || status === 'cancelled') stopSharing();
       load();
     }
@@ -158,7 +152,7 @@ export default function JobDetailScreen() {
 
   function openNavigation() {
     if (job?.customer_lat == null || job.customer_lng == null) {
-      Alert.alert('No coordinates', 'Customer location missing.');
+      customAlert.warning('No coordinates', 'Customer location missing.');
       return;
     }
     const url = `https://www.google.com/maps/dir/?api=1&destination=${job.customer_lat},${job.customer_lng}`;
@@ -202,14 +196,22 @@ export default function JobDetailScreen() {
         <ErrorText message={categoryError} />
 
         {/* Customer WhatsApp & Direct Phone Contact */}
-        {['accepted', 'en_route', 'in_progress'].includes(job.status) && (
+        {['accepted', 'on_the_way', 'en_route', 'arrived', 'in_progress'].includes(job.status) && (
           <WhatsAppContactCard
             role="mechanic"
             requestId={job.id}
             phone={job.profiles?.phone}
             participantName={job.profiles?.full_name}
-            status={job.status}
+            avatarUrl={job.profiles?.avatar_url}
+            vehicleType={job.vehicles?.vehicle_type}
             vehicleDetails={job.vehicles ? vehicleLabel(job.vehicles) : null}
+            problemDescription={job.description || problemLabels[job.problem_type]}
+            locationText={
+              job.customer_lat != null
+                ? `${job.customer_lat.toFixed(4)}, ${job.customer_lng?.toFixed(4)}`
+                : null
+            }
+            status={job.status}
           />
         )}
 

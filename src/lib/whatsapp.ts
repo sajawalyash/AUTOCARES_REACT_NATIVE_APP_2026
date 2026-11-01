@@ -1,4 +1,6 @@
-import { Alert, Linking } from 'react-native';
+import { Linking } from 'react-native';
+
+import { customAlert } from '../components/custom-alert';
 
 /**
  * Normalizes a phone number to standard international format (digits only, no '+' or leading zeros).
@@ -103,7 +105,7 @@ export async function openWhatsAppChat(options: WhatsAppContactOptions): Promise
 
   const { isValid, formatted, error } = normalizePhoneNumber(phone);
   if (!isValid || !formatted) {
-    Alert.alert(
+    customAlert.error(
       'Phone Number Unavailable',
       error ?? 'The participant has not provided a valid phone number for WhatsApp messaging.'
     );
@@ -114,32 +116,24 @@ export async function openWhatsAppChat(options: WhatsAppContactOptions): Promise
   const waUrl = buildWhatsAppUrl(formatted, message);
   const targetLabel = participantName ? participantName : role === 'customer' ? 'the mechanic' : 'the customer';
 
-  Alert.alert(
-    'Open WhatsApp',
-    `You are leaving AutoCares to contact ${targetLabel} on WhatsApp.\n\nMessages are sent externally through your WhatsApp application.`,
-    [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Continue to WhatsApp',
-        onPress: async () => {
-          try {
-            const canOpen = await Linking.canOpenURL(waUrl);
-            if (canOpen) {
-              await Linking.openURL(waUrl);
-            } else {
-              // Direct open attempt
-              await Linking.openURL(waUrl);
-            }
-          } catch {
-            Alert.alert(
-              'Could Not Open WhatsApp',
-              'WhatsApp does not appear to be installed or cannot open this link. You can use standard phone calls instead.'
-            );
-          }
-        },
-      },
-    ]
-  );
+  customAlert({
+    title: 'Open WhatsApp',
+    subtitle: `Contacting ${targetLabel}`,
+    message: `You are leaving AutoCares to contact ${targetLabel} on WhatsApp.\n\nMessages are sent externally through your WhatsApp application.`,
+    type: 'whatsapp',
+    confirmText: 'Continue to WhatsApp',
+    cancelText: 'Cancel',
+    onConfirm: async () => {
+      try {
+        await Linking.openURL(waUrl);
+      } catch {
+        customAlert.error(
+          'Could Not Open WhatsApp',
+          'WhatsApp does not appear to be installed or cannot open this link. You can use standard phone calls instead.'
+        );
+      }
+    },
+  });
 }
 
 /**
@@ -150,39 +144,76 @@ export async function callParticipant(
   participantName?: string | null
 ): Promise<void> {
   if (!phone) {
-    Alert.alert('Phone Number Missing', 'No contact phone number is available for this participant.');
+    customAlert.error('Phone Number Missing', 'No contact phone number is available for this participant.');
     return;
   }
 
   const cleaned = phone.replace(/[^\d+]/g, '');
   if (!cleaned) {
-    Alert.alert('Invalid Number', 'Could not parse a valid phone number for calling.');
+    customAlert.error('Invalid Number', 'Could not parse a valid phone number for calling.');
     return;
   }
 
   const targetLabel = participantName ? participantName : 'this contact';
 
-  Alert.alert('Call Contact', `Would you like to open your phone dialer to call ${targetLabel}?`, [
-    { text: 'Cancel', style: 'cancel' },
-    {
-      text: 'Call',
-      onPress: async () => {
-        const telUrl = `tel:${cleaned}`;
-        try {
-          await Linking.openURL(telUrl);
-        } catch {
-          Alert.alert('Call Failed', 'Unable to open the phone dialer on this device.');
-        }
-      },
+  customAlert.confirm(
+    'Call Contact',
+    `Would you like to open your phone dialer to call ${targetLabel}?`,
+    async () => {
+      const telUrl = `tel:${cleaned}`;
+      try {
+        await Linking.openURL(telUrl);
+      } catch {
+        customAlert.error('Call Failed', 'Unable to open the phone dialer on this device.');
+      }
     },
-  ]);
+    undefined,
+    'Call',
+    'Cancel'
+  );
 }
 
 /**
- * Official AutoCares 24/7 Roadside Assistance WhatsApp helpline number.
+ * Official AutoCares 24/7 Roadside Assistance & Admin Support Configuration.
+ * Centralized helpline accessible 24 hours a day, 7 days a week.
  */
+export const AUTOCARES_SUPPORT_CONFIG = {
+  raw: '03390892660',
+  formatted: '0339 0892660',
+  international: '+923390892660',
+  digits: '923390892660',
+  telUrl: 'tel:03390892660',
+  badge: 'ADMIN SUPPORT AVAILABLE 24/7',
+  availability: 'Available 24/7',
+  message:
+    'Need assistance? Our AutoCares support team is available 24/7 to help customers and mechanics with service requests, technical issues, emergency assistance, and general inquiries.',
+};
+
 export const AUTOCARES_SUPPORT_PHONE =
-  process.env.EXPO_PUBLIC_WHATSAPP_SUPPORT_PHONE || '923001234567';
+  process.env.EXPO_PUBLIC_WHATSAPP_SUPPORT_PHONE || AUTOCARES_SUPPORT_CONFIG.digits;
+
+/**
+ * Directly initiates a call to the official AutoCares Admin Helpline.
+ */
+export async function callAdminHelpline(): Promise<void> {
+  customAlert.confirm(
+    'AutoCares 24/7 Helpline',
+    `Would you like to dial the AutoCares Admin Helpline at ${AUTOCARES_SUPPORT_CONFIG.formatted}?\n\nOur support team is available 24/7 for instant assistance.`,
+    async () => {
+      try {
+        await Linking.openURL(AUTOCARES_SUPPORT_CONFIG.telUrl);
+      } catch {
+        customAlert.error(
+          'Call Failed',
+          `Unable to open phone dialer. Please dial ${AUTOCARES_SUPPORT_CONFIG.formatted} directly.`
+        );
+      }
+    },
+    undefined,
+    'Call 0339 0892660',
+    'Cancel'
+  );
+}
 
 /**
  * Connects directly to AutoCares 24/7 Roadside Assistance / Dispatch helpline on WhatsApp.
@@ -191,34 +222,15 @@ export async function openWhatsAppSupport(
   role: 'customer' | 'mechanic' = 'customer',
   context?: string
 ): Promise<void> {
-  const phone = AUTOCARES_SUPPORT_PHONE;
-  const message =
-    role === 'mechanic'
-      ? `Assalam-o-Alaikum AutoCares Dispatch! I am an AutoCares mechanic needing roadside dispatch assistance.${context ? ` Details: ${context}` : ''}`
-      : `Assalam-o-Alaikum AutoCares Roadside Assistance! I need help with my vehicle.${context ? ` Details: ${context}` : ''}`;
-
+  const phone = AUTOCARES_SUPPORT_CONFIG.digits;
   const { isValid, formatted } = normalizePhoneNumber(phone);
-  const targetNumber = isValid && formatted ? formatted : '923001234567';
-  const waUrl = buildWhatsAppUrl(targetNumber, message);
+  const targetNumber = isValid && formatted ? formatted : '923390892660';
 
-  Alert.alert(
-    'AutoCares WhatsApp Helpline',
-    'You are connecting to AutoCares 24/7 Roadside Support on WhatsApp.\n\nOur team is available 24/7 to assist you with vehicle breakdowns, mechanic coordination, and live dispatch.',
-    [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Open WhatsApp',
-        onPress: async () => {
-          try {
-            await Linking.openURL(waUrl);
-          } catch {
-            Alert.alert(
-              'Could Not Open WhatsApp',
-              'WhatsApp does not appear to be installed. You can reach our 24/7 helpline by dialing +92 300 1234567.'
-            );
-          }
-        },
-      },
-    ]
-  );
+  customAlert.whatsapp({
+    role,
+    phone: targetNumber,
+    displayNumber: AUTOCARES_SUPPORT_CONFIG.formatted,
+    context,
+    description: AUTOCARES_SUPPORT_CONFIG.message,
+  });
 }

@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import AdminSubscreenHeader from '@/components/admin-subscreen-header';
 import { Card, Screen } from '@/components/ui';
+import { customAlert } from '../../components/custom-alert';
 import { theme } from '@/constants/autocares-theme';
 import { useAuth } from '@/providers/auth-provider';
 
@@ -11,17 +12,18 @@ export default function AdminProfile() {
   const { user, profile, signOut } = useAuth();
 
   function handleSignOut() {
-    Alert.alert('Sign out', 'Are you sure you want to sign out of the administrator panel?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out',
-        style: 'destructive',
-        onPress: async () => {
-          await signOut();
-          router.replace('/login');
-        },
+    customAlert.confirm(
+      'Sign Out',
+      'Are you sure you want to sign out of the administrator panel?',
+      async () => {
+        await signOut();
+        router.replace('/login');
       },
-    ]);
+      undefined,
+      'Sign Out',
+      'Cancel',
+      true
+    );
   }
 
   const initials = (profile?.full_name || 'Admin')

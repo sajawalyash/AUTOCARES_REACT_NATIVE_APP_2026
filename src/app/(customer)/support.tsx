@@ -1,5 +1,5 @@
+import AdminSupportCard from '../../components/admin-support-card';
 import { useState } from 'react';
-import { Alert } from 'react-native';
 
 import {
   Field,
@@ -10,6 +10,7 @@ import {
   Title,
 } from '../../components/ui';
 import { createSupportTicket } from '../../lib/support';
+import { customAlert } from '../../components/custom-alert';
 import { useAuth } from '../../providers/auth-provider';
 
 export default function SupportScreen() {
@@ -20,7 +21,7 @@ export default function SupportScreen() {
 
   async function submit() {
     if (!user || !subject.trim() || !message.trim()) {
-      Alert.alert('Missing fields', 'Subject and message are required.');
+      customAlert.warning('Missing fields', 'Subject and message are required.');
       return;
     }
     setSaving(true);
@@ -31,16 +32,17 @@ export default function SupportScreen() {
     });
     setSaving(false);
     if (error) {
-      Alert.alert('Failed', error);
+      customAlert.error('Failed', error);
       return;
     }
-    Alert.alert('Sent', 'Support will get back to you.');
+    customAlert.success('Sent', 'Support will get back to you.');
     setSubject('');
     setMessage('');
   }
 
   return (
     <Screen>
+      <AdminSupportCard role="customer" style={{ marginBottom: 14 }} />
       <Title>Contact support</Title>
       <Subtitle>Send a message to the AutoCares team.</Subtitle>
       <Label>Subject</Label>

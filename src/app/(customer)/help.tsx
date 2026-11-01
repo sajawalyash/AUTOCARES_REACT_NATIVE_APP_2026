@@ -1,3 +1,4 @@
+import AdminSupportCard from '../../components/admin-support-card';
 import { Text } from 'react-native';
 
 import { Card, Screen, Subtitle, Title } from '../../components/ui';
@@ -27,6 +28,7 @@ export default function HelpScreen() {
     <Screen>
       <Title>Help</Title>
       <Subtitle>Quick answers for AutoCares customers.</Subtitle>
+      <AdminSupportCard role="customer" style={{ marginBottom: 14 }} />
       {topics.map((t) => (
         <Card key={t.title}>
           <Text style={{ fontWeight: '800', color: theme.colors.text }}>{t.title}</Text>

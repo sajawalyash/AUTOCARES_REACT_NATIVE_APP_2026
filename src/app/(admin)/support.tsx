@@ -3,7 +3,6 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -14,6 +13,7 @@ import {
 
 import AdminSubscreenHeader from '@/components/admin-subscreen-header';
 import { Card, EmptyState, ErrorText, LoadingState, Screen, StatusBadge } from '@/components/ui';
+import { customAlert } from '../../components/custom-alert';
 import { theme } from '@/constants/autocares-theme';
 import { listAdminSupportTickets, recordAdminActivity, updateSupportTicketStatus } from '@/lib/admin';
 import type { SupportTicket } from '@/lib/types';
@@ -58,7 +58,7 @@ export default function AdminSupport() {
     setUpdatingId(null);
 
     if (result.error) {
-      Alert.alert('Could not update ticket', result.error);
+      customAlert.error('Could not update ticket', result.error);
       return;
     }
 

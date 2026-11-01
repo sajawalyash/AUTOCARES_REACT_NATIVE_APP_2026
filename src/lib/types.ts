@@ -4,7 +4,9 @@ export type RequestStatus =
   | 'pending'
   | 'accepted'
   | 'rejected'
+  | 'on_the_way'
   | 'en_route'
+  | 'arrived'
   | 'in_progress'
   | 'completed'
   | 'cancelled';
@@ -110,7 +112,12 @@ export type ServiceRequest = {
   updated_at: string;
   completed_at: string | null;
   profiles?: Pick<Profile, 'full_name' | 'phone' | 'avatar_url'>;
-  mechanic?: Pick<Profile, 'full_name' | 'phone'>;
+  mechanic?: Pick<Profile, 'full_name' | 'phone' | 'avatar_url'> & {
+    workshop_name?: string | null;
+    mechanic_type?: MechanicType | null;
+    latitude?: number | null;
+    longitude?: number | null;
+  };
   vehicles?: Pick<Vehicle, 'vehicle_type' | 'make' | 'model' | 'year' | 'registration_number'>;
 };
 
@@ -202,8 +209,10 @@ export const STATUS_LABELS: Record<RequestStatus, string> = {
   pending: 'Pending',
   accepted: 'Accepted',
   rejected: 'Rejected',
-  en_route: 'En route',
-  in_progress: 'In progress',
+  on_the_way: 'On The Way',
+  en_route: 'On The Way',
+  arrived: 'Arrived',
+  in_progress: 'In Progress',
   completed: 'Completed',
   cancelled: 'Cancelled',
 };

@@ -7,6 +7,12 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'r
 import AutoCaresLogo from '../../../components/autocares-logo';
 import { Card, LoadingState, OutlineButton, Screen, StatusBadge, Subtitle, Title } from '../../../components/ui';
 import WhatsAppContactCard from '../../../components/whatsapp-contact-card';
+import AdminSupportCard from '../../../components/admin-support-card';
+import { customAlert } from '../../../components/custom-alert';
+import { acceptRequest, rejectRequest, listPendingRequestsForMechanic } from '../../../lib/requests';
+import { distanceKm, etaMinutesFromDistance } from '../../../lib/geo';
+import { getCurrentCoords } from '../../../lib/location';
+import { normalizePhoneNumber } from '../../../lib/whatsapp';
 import { theme } from '../../../constants/autocares-theme';
 import { getMechanicProfile } from '../../../lib/mechanics';
 import { listMechanicJobs, listPendingRequests } from '../../../lib/requests';
@@ -28,7 +34,7 @@ export default function MechanicHome() {
     if (!user) return;
     const [mp, pend, mine] = await Promise.all([
       getMechanicProfile(user.id),
-      listPendingRequests(),
+      listPendingRequestsForMechanic(user.id),
       listMechanicJobs(user.id),
     ]);
     setMechanic(mp.mechanic);
@@ -44,14 +50,14 @@ export default function MechanicHome() {
   );
 
   const activeJobs = useMemo(() => {
-    return jobs.filter((j) => ['accepted', 'en_route', 'in_progress'].includes(j.status));
+    return jobs.filter((j) => ['accepted', 'on_the_way', 'en_route', 'arrived', 'in_progress'].includes(j.status));
   }, [jobs]);
 
   const stats = useMemo(() => {
     const today = new Date().toDateString();
     const todays = jobs.filter((j) => new Date(j.created_at).toDateString() === today);
     const accepted = jobs.filter((j) =>
-      ['accepted', 'en_route', 'in_progress'].includes(j.status)
+      ['accepted', 'on_the_way', 'en_route', 'arrived', 'in_progress'].includes(j.status)
     );
     const completed = jobs.filter((j) => j.status === 'completed');
     const earnings = completed.reduce(
@@ -74,6 +80,68 @@ export default function MechanicHome() {
       <Screen safeBottom={false}>
         <LoadingState label="Loading mechanic overview…" />
       </Screen>
+    );
+  }
+
+  
+  async function handleAcceptPending(item: ServiceRequest) {
+    if (!user) return;
+    if (mechanic?.verification_status !== 'approved') {
+      customAlert.warning('Not Verified', 'An admin must approve your mechanic profile before you can accept requests.');
+      return;
+    }
+    if (!mechanic.is_available) {
+      customAlert.warning('Currently Unavailable', 'Please toggle your availability to Available in your Profile to accept jobs.');
+      return;
+    }
+
+    let eta = 20;
+    const loc = await getCurrentCoords();
+    if (loc.coords && item.customer_lat != null && item.customer_lng != null) {
+      eta = etaMinutesFromDistance(
+        distanceKm(loc.coords.latitude, loc.coords.longitude, item.customer_lat, item.customer_lng)
+      );
+    }
+
+    customAlert.confirm(
+      'Accept Assistance Request',
+      `Accept this roadside assistance job?\n\nThe customer will be notified immediately and provided with your live contact details.`,
+      async () => {
+        const { request, error: acceptErr } = await acceptRequest(item.id, user.id, eta);
+        if (acceptErr || !request) {
+          customAlert.error('Could Not Accept', acceptErr ?? 'This request is no longer available.');
+          await load();
+          return;
+        }
+        customAlert.success(
+          'Request Accepted!',
+          'You have accepted this assistance request. Proceeding to job tracking.',
+          () => router.push(`/(mechanic)/job/${request.id}`)
+        );
+      },
+      undefined,
+      'Accept Request',
+      'Cancel'
+    );
+  }
+
+  async function handleRejectPending(id: string) {
+    customAlert.confirm(
+      'Reject Assistance Request',
+      'Are you sure you want to reject this request? The customer will be informed so they can find another nearby technician.',
+      async () => {
+        const { error: rejectErr } = await rejectRequest(id);
+        if (rejectErr) {
+          customAlert.error('Reject Failed', rejectErr);
+        } else {
+          customAlert.info('Request Rejected', 'The customer has been notified to choose another mechanic.');
+        }
+        await load();
+      },
+      undefined,
+      'Reject Request',
+      'Cancel',
+      true
     );
   }
 
@@ -160,33 +228,84 @@ export default function MechanicHome() {
         </View>
 
         {/* 24/7 Dispatch WhatsApp Helpline Banner */}
-        <Pressable
-          style={({ pressed }) => [styles.dispatchBanner, pressed && styles.cardPressed]}
-          onPress={() => openWhatsAppSupport('mechanic')}
-          accessibilityRole="button"
-          accessibilityLabel="AutoCares Dispatch WhatsApp">
-          <View style={styles.dispatchBannerLeft}>
-            <View style={styles.dispatchBannerIconBox}>
-              <FontAwesome name="whatsapp" size={26} color="#FFFFFF" />
+        <AdminSupportCard role="mechanic" style={{ marginBottom: 16 }} />
+
+        
+        {/* Incoming Customer Assistance Requests */}
+        {pending.length > 0 && (
+          <View style={{ marginBottom: 20 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <Text style={styles.sectionHeader}>Incoming Customer Requests ({pending.length})</Text>
+              <Pressable onPress={() => router.push('/(mechanic)/(tabs)/requests')}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: theme.colors.primary }}>View All →</Text>
+              </Pressable>
             </View>
-            <View style={styles.dispatchBannerContent}>
-              <View style={styles.dispatchTitleRow}>
-                <Text style={styles.dispatchTitle}>Dispatch WhatsApp</Text>
-                <View style={styles.dispatchLiveBadge}>
-                  <View style={styles.dispatchLiveDot} />
-                  <Text style={styles.dispatchLiveText}>LIVE 24/7</Text>
-                </View>
-              </View>
-              <Text style={styles.dispatchSub}>
-                Instant roadside job coordination & dispatch control room
-              </Text>
-            </View>
+
+            {pending.slice(0, 3).map((item) => {
+              const customerPhone = item.profiles?.phone ? normalizePhoneNumber(item.profiles.phone).formatted : null;
+              const displayPhone = customerPhone
+                ? customerPhone.startsWith('92')
+                  ? `0${customerPhone.slice(2, 5)} ${customerPhone.slice(5)}`
+                  : customerPhone
+                : 'Phone not provided';
+              const vehicleLabelStr = item.vehicles
+                ? `${item.vehicles.vehicle_type ? `[${item.vehicles.vehicle_type}] ` : ''}${item.vehicles.make} ${item.vehicles.model}`
+                : 'Vehicle details pending';
+
+              return (
+                <Card key={item.id} style={styles.pendingDashboardCard}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={{ fontSize: 15, fontWeight: '800', color: '#0F172A' }}>
+                        {item.problem_type.replace('_', ' ').toUpperCase()}
+                        {item.is_sos ? ' · SOS' : ''}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                        🕒 {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </View>
+                    <View style={styles.dashboardPendingBadge}>
+                      <Text style={styles.dashboardPendingBadgeText}>NEW REQUEST</Text>
+                    </View>
+                  </View>
+
+                  <View style={{ height: 1, backgroundColor: '#F1F5F9', marginVertical: 8 }} />
+
+                  <Text style={{ fontSize: 13, color: '#1E293B', marginBottom: 2 }}>
+                    👤 <Text style={{ fontWeight: '700' }}>{item.profiles?.full_name ?? 'Customer'}</Text> · 📞 {displayPhone}
+                  </Text>
+                  <Text style={{ fontSize: 12.5, color: '#475569', marginBottom: 2 }}>
+                    🚗 {vehicleLabelStr}
+                  </Text>
+                  {item.description ? (
+                    <Text style={{ fontSize: 12, color: '#64748B', marginBottom: 4 }} numberOfLines={2}>
+                      💬 {item.description}
+                    </Text>
+                  ) : null}
+                  <Text style={{ fontSize: 12, color: '#0284C7', fontWeight: '600', marginBottom: 8 }}>
+                    📍 {item.customer_lat != null ? `Location: ${item.customer_lat.toFixed(4)}, ${item.customer_lng?.toFixed(4)}` : 'Location shared'} · Diagnosis: Rs. 300
+                  </Text>
+
+                  {/* Accept / Reject Buttons */}
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <Pressable
+                      style={({ pressed }) => [styles.dashAcceptBtn, pressed && styles.btnPressed]}
+                      onPress={() => handleAcceptPending(item)}>
+                      <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+                      <Text style={styles.dashAcceptBtnText}>Accept Request</Text>
+                    </Pressable>
+                    <Pressable
+                      style={({ pressed }) => [styles.dashRejectBtn, pressed && styles.btnPressed]}
+                      onPress={() => handleRejectPending(item.id)}>
+                      <Ionicons name="close-circle-outline" size={16} color="#DC2626" />
+                      <Text style={styles.dashRejectBtnText}>Reject</Text>
+                    </Pressable>
+                  </View>
+                </Card>
+              );
+            })}
           </View>
-          <View style={styles.dispatchActionBox}>
-            <Text style={styles.dispatchActionText}>Chat</Text>
-            <Ionicons name="chevron-forward" size={16} color="#25D366" />
-          </View>
-        </Pressable>
+        )}
 
         {/* Active Assigned Jobs with WhatsApp Contact */}
         <View style={{ marginBottom: 16 }}>
@@ -222,7 +341,7 @@ export default function MechanicHome() {
                 <Text style={styles.emptyJobsTitle}>No Active Jobs In Progress</Text>
               </View>
               <Text style={styles.emptyJobsText}>
-                When you accept roadside assistance requests, the customer's direct WhatsApp and phone contact cards will appear here.
+                When you accept roadside assistance requests, the customer&apos;s direct WhatsApp and phone contact cards will appear here.
               </Text>
             </View>
           )}
@@ -580,4 +699,57 @@ const styles = StyleSheet.create({
   actionGroup: {
     gap: 4,
   },
+
+  pendingDashboardCard: {
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    backgroundColor: '#FFFBF5',
+    marginBottom: 10,
+  },
+  dashboardPendingBadge: {
+    backgroundColor: '#FFEDD5',
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+  },
+  dashboardPendingBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#C2410C',
+  },
+  dashAcceptBtn: {
+    flex: 1.2,
+    height: 40,
+    backgroundColor: '#16A34A',
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  dashAcceptBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  dashRejectBtn: {
+    flex: 0.8,
+    height: 40,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  dashRejectBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+
 });

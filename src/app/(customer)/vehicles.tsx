@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Alert, FlatList, Text } from 'react-native';
+import { FlatList, Text } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 
 import {
@@ -15,6 +15,7 @@ import {
   Subtitle,
   Title,
 } from '../../components/ui';
+import { customAlert } from '../../components/custom-alert';
 import { theme } from '../../constants/autocares-theme';
 import { vehicleLabel, type Vehicle, type VehicleDiagnostic } from '../../lib/types';
 import {
@@ -63,7 +64,7 @@ export default function VehiclesScreen() {
 
   async function addVehicle() {
     if (!user || !make.trim() || !model.trim()) {
-      Alert.alert('Missing fields', 'Make and model are required.');
+      customAlert.warning('Missing fields', 'Make and model are required.');
       return;
     }
     const { error: createError } = await createVehicle({
@@ -77,7 +78,7 @@ export default function VehiclesScreen() {
       notes: null,
     });
     if (createError) {
-      Alert.alert('Error', createError);
+      customAlert.error('Error', createError);
       return;
     }
     setMake('');
@@ -88,10 +89,23 @@ export default function VehiclesScreen() {
   }
 
   async function removeVehicle(id: string) {
-    const { error: delError } = await deleteVehicle(id);
-    if (delError) Alert.alert('Error', delError);
-    setSelected(null);
-    load();
+    customAlert.confirm(
+      'Delete Vehicle',
+      'Are you sure you want to remove this vehicle from your garage?',
+      async () => {
+        const { error: delError } = await deleteVehicle(id);
+        if (delError) {
+          customAlert.error('Could Not Delete Vehicle', delError);
+        } else {
+          setSelected(null);
+          load();
+        }
+      },
+      undefined,
+      'Delete',
+      'Cancel',
+      true
+    );
   }
 
   async function saveDiagnostic() {
@@ -102,7 +116,7 @@ export default function VehiclesScreen() {
       description: diagDesc.trim(),
     });
     if (addError) {
-      Alert.alert('Error', addError);
+      customAlert.error('Error', addError);
       return;
     }
     setDiagCode('');

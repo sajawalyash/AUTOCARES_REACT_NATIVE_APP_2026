@@ -1,6 +1,7 @@
+import AdminSupportCard from '../../components/admin-support-card';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
   Card,
@@ -13,6 +14,7 @@ import {
   Subtitle,
   Title,
 } from '../../components/ui';
+import { customAlert } from '../../components/custom-alert';
 import { theme } from '../../constants/autocares-theme';
 import { listServiceCategories } from '../../lib/admin';
 import { getCurrentCoords } from '../../lib/location';
@@ -90,7 +92,7 @@ export default function RequestScreen() {
     });
     setSubmitting(false);
     if (createError || !request) {
-      Alert.alert('Request failed', createError ?? 'Unknown error occurred.');
+      customAlert.error('Request failed', createError ?? 'Unknown error occurred.');
       return;
     }
     replace(`/(customer)/tracking/${request.id}`);

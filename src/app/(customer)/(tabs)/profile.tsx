@@ -1,7 +1,7 @@
 import { Avatar } from '../../../components/avatar';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
   Card,
@@ -13,6 +13,7 @@ import {
   Subtitle,
   Title,
 } from '../../../components/ui';
+import { customAlert } from '../../../components/custom-alert';
 import { theme } from '../../../constants/autocares-theme';
 import { updateProfile } from '../../../lib/profiles';
 import { useAuth } from '../../../providers/auth-provider';
@@ -27,11 +28,11 @@ export default function CustomerProfile() {
     if (!user) return;
     const { error } = await updateProfile(user.id, { avatar_url: uri });
     if (error) {
-      Alert.alert('Upload Failed', error);
+      customAlert.error('Upload Failed', error);
       return;
     }
     await refreshProfile();
-    Alert.alert('Success', 'Profile photo updated successfully!');
+    customAlert.success('Success', 'Profile photo updated successfully!');
   }
 
   async function save() {
@@ -43,16 +44,26 @@ export default function CustomerProfile() {
     });
     setSaving(false);
     if (error) {
-      Alert.alert('Save failed', error);
+      customAlert.error('Save failed', error);
       return;
     }
     await refreshProfile();
-    Alert.alert('Saved', 'Profile updated successfully.');
+    customAlert.success('Saved', 'Profile updated successfully.');
   }
 
-  async function logout() {
-    await signOut();
-    router.replace('/login');
+  function logout() {
+    customAlert.confirm(
+      'Sign Out',
+      'Are you sure you want to sign out of your AutoCares account?',
+      async () => {
+        await signOut();
+        router.replace('/login');
+      },
+      undefined,
+      'Sign Out',
+      'Cancel',
+      true
+    );
   }
 
   return (

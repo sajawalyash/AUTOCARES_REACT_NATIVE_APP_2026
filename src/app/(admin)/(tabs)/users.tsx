@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Alert, FlatList, Text } from 'react-native';
+import { FlatList, Text } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 
 import AutoCaresLogo from '../../../components/autocares-logo';
@@ -15,6 +15,7 @@ import {
   Subtitle,
   Title,
 } from '../../../components/ui';
+import { customAlert } from '../../../components/custom-alert';
 import { theme } from '../../../constants/autocares-theme';
 import { recordAdminActivity } from '../../../lib/admin';
 import { listProfilesByRole, setProfileDisabled } from '../../../lib/profiles';
@@ -45,7 +46,7 @@ export default function AdminUsers() {
   async function toggleDisabled(p: Profile) {
     const result = await setProfileDisabled(p.id, !p.is_disabled);
     if (result.error) {
-      Alert.alert('Failed', result.error);
+      customAlert.error('Failed', result.error);
       return;
     }
     if (user) {
@@ -56,7 +57,7 @@ export default function AdminUsers() {
         entity_id: p.id,
         details: { role: p.role },
       });
-      if (log.error) Alert.alert('Account updated, but activity log failed', log.error);
+      if (log.error) customAlert.warning('Account updated, but activity log failed', log.error);
     }
     load();
   }

@@ -3,7 +3,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Pressable,
   StyleProp,
@@ -13,6 +12,7 @@ import {
   ViewStyle,
 } from 'react-native';
 
+import { customAlert } from './custom-alert';
 import { theme } from '../constants/autocares-theme';
 
 export interface AvatarProps {
@@ -29,10 +29,7 @@ export async function pickAvatarImage(): Promise<string | null> {
   try {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(
-        'Permission Required',
-        'Please grant access to your photo gallery to select a profile picture.'
-      );
+      customAlert.warning('Permission Required', 'Please grant access to your photo gallery to select a profile picture.');
       return null;
     }
 
@@ -56,7 +53,7 @@ export async function pickAvatarImage(): Promise<string | null> {
     return asset.uri;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
-    Alert.alert('Error', `Failed to open image picker: ${message}`);
+    customAlert.error('Error', `Failed to open image picker: ${message}`);
     return null;
   }
 }

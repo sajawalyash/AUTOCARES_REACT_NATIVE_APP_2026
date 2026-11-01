@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Alert, FlatList, Text } from 'react-native';
+import { FlatList, Text } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 
 import {
@@ -13,6 +13,7 @@ import {
   Subtitle,
   Title,
 } from '../../../components/ui';
+import { customAlert } from '../../../components/custom-alert';
 import { theme } from '../../../constants/autocares-theme';
 import { useProblemLabels } from '../../../hooks/use-problem-labels';
 import { etaMinutesFromDistance, distanceKm } from '../../../lib/geo';
@@ -49,11 +50,11 @@ export default function IncomingRequests() {
     if (!user) return;
     const { mechanic } = await getMechanicProfile(user.id);
     if (!mechanic || mechanic.verification_status !== 'approved') {
-      Alert.alert('Not verified', 'An admin must approve your mechanic profile first.');
+      customAlert.warning('Not verified', 'An admin must approve your mechanic profile first.');
       return;
     }
     if (!mechanic.is_available) {
-      Alert.alert('Unavailable', 'Set yourself available in Profile to accept jobs.');
+      customAlert.warning('Unavailable', 'Set yourself available in Profile to accept jobs.');
       return;
     }
 
@@ -76,7 +77,7 @@ export default function IncomingRequests() {
 
     const { request, error: acceptError } = await acceptRequest(item.id, user.id, eta);
     if (acceptError || !request) {
-      Alert.alert('Accept failed', acceptError ?? 'Unavailable');
+      customAlert.error('Accept failed', acceptError ?? 'Unavailable');
       return;
     }
     go(`/(mechanic)/job/${request.id}`);
@@ -84,7 +85,7 @@ export default function IncomingRequests() {
 
   async function onReject(id: string) {
     const { error: rejectError } = await rejectRequest(id);
-    if (rejectError) Alert.alert('Reject failed', rejectError);
+    if (rejectError) customAlert.error('Reject failed', rejectError);
     load();
   }
 

@@ -3,7 +3,6 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -16,6 +15,7 @@ import {
 
 import AdminSubscreenHeader from '@/components/admin-subscreen-header';
 import { Card, EmptyState, ErrorText, LoadingState, PrimaryButton, Screen } from '@/components/ui';
+import { customAlert } from '../../components/custom-alert';
 import { theme } from '@/constants/autocares-theme';
 import { listServiceCategories, recordAdminActivity, updateServiceCategory, upsertServiceCategory } from '@/lib/admin';
 import type { ProblemType, ServiceCategory } from '@/lib/types';
@@ -53,7 +53,7 @@ function CategoryItemCard({
 
   async function handleSave() {
     if (!label.trim()) {
-      Alert.alert('Category name required', 'Please enter a non-empty category name.');
+      customAlert.warning('Category name required', 'Please enter a non-empty category name.');
       return;
     }
     setSaving(true);
@@ -175,7 +175,7 @@ export default function AdminCategories() {
   ): Promise<boolean> {
     const { error: saveError } = await updateServiceCategory(id, patch);
     if (saveError) {
-      Alert.alert('Could not save category', saveError);
+      customAlert.error('Could not save category', saveError);
       return false;
     }
 
@@ -189,7 +189,7 @@ export default function AdminCategories() {
       }).catch(() => {});
     }
 
-    Alert.alert('Saved', `Category "${patch.label}" updated successfully.`);
+    customAlert.success('Saved', `Category "${patch.label}" updated successfully.`);
     load();
     return true;
   }
@@ -199,7 +199,7 @@ export default function AdminCategories() {
     const missing = DEFAULT_CATEGORIES.filter((c) => !existingIds.has(c.id));
 
     if (missing.length === 0) {
-      Alert.alert('All standard categories present', 'All 7 standard roadside service categories already exist.');
+      customAlert.info('All standard categories present', 'All 7 standard roadside service categories already exist.');
       return;
     }
 
@@ -222,7 +222,7 @@ export default function AdminCategories() {
       }).catch(() => {});
     }
 
-    Alert.alert('Restored', `Added ${missing.length} missing standard categories.`);
+    customAlert.success('Restored', `Added ${missing.length} missing standard categories.`);
     load();
   }
 

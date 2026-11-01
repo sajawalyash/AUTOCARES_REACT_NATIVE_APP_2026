@@ -1,7 +1,7 @@
 import { Avatar } from '../../../components/avatar';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import {
   Card,
@@ -13,6 +13,7 @@ import {
   Subtitle,
   Title,
 } from '../../../components/ui';
+import { customAlert } from '../../../components/custom-alert';
 import { theme } from '../../../constants/autocares-theme';
 import { getCurrentCoords } from '../../../lib/location';
 import { updateProfile } from '../../../lib/profiles';
@@ -26,11 +27,11 @@ export default function MechanicProfileScreen() {
     if (!user) return;
     const { error } = await updateProfile(user.id, { avatar_url: uri });
     if (error) {
-      Alert.alert('Upload Failed', error);
+      customAlert.error('Upload Failed', error);
       return;
     }
     await refreshProfile();
-    Alert.alert('Success', 'Mechanic photo updated successfully!');
+    customAlert.success('Success', 'Mechanic photo updated successfully!');
   }
   const [workshop, setWorkshop] = useState('');
   const [specialties, setSpecialties] = useState('');
@@ -77,8 +78,8 @@ export default function MechanicProfileScreen() {
       longitude: loc.coords?.longitude ?? undefined,
     });
     setSaving(false);
-    if (error) Alert.alert('Save failed', error);
-    else Alert.alert('Saved', 'Mechanic profile and live location updated.');
+    if (error) customAlert.error('Save failed', error);
+    else customAlert.success('Saved', 'Mechanic profile and live location updated.');
   }
 
   const isApproved = verification === 'approved';
@@ -196,9 +197,19 @@ export default function MechanicProfileScreen() {
         <PrimaryButton
           label="Sign Out"
           danger
-          onPress={async () => {
-            await signOut();
-            router.replace('/login');
+          onPress={() => {
+            customAlert.confirm(
+              'Sign Out',
+              'Are you sure you want to sign out of your mechanic account?',
+              async () => {
+                await signOut();
+                router.replace('/login');
+              },
+              undefined,
+              'Sign Out',
+              'Cancel',
+              true
+            );
           }}
         />
       </ScrollView>

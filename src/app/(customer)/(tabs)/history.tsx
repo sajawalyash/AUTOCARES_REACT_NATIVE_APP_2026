@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 
 import {
@@ -14,6 +14,7 @@ import {
   Subtitle,
   Title,
 } from '../../../components/ui';
+import { customAlert } from '../../../components/custom-alert';
 import { theme } from '../../../constants/autocares-theme';
 import { useProblemLabels } from '../../../hooks/use-problem-labels';
 import { go } from '../../../lib/nav';
@@ -60,12 +61,12 @@ export default function HistoryScreen() {
     if (!user || !ratingRequest?.mechanic_id) return;
     const value = Number(stars);
     if (value < 1 || value > 5) {
-      Alert.alert('Invalid rating', 'Stars must be between 1 and 5.');
+      customAlert.warning('Invalid rating', 'Stars must be between 1 and 5.');
       return;
     }
     const existing = await getRatingForRequest(ratingRequest.id);
     if (existing.rating) {
-      Alert.alert('Already rated', 'You already rated this job.');
+      customAlert.info('Already rated', 'You already rated this job.');
       return;
     }
     const { error: rateError } = await createRating({
@@ -76,10 +77,10 @@ export default function HistoryScreen() {
       comment,
     });
     if (rateError) {
-      Alert.alert('Rating failed', rateError);
+      customAlert.error('Rating failed', rateError);
       return;
     }
-    Alert.alert('Thank you', 'Your review and rating were submitted.');
+    customAlert.success('Thank you', 'Your review and rating were submitted.');
     setRatingRequest(null);
     setComment('');
     load();

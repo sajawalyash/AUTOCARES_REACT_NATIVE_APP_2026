@@ -1,5 +1,6 @@
+import AdminSupportCard from '../../components/admin-support-card';
 import { useState } from 'react';
-import { Alert, Linking, Text } from 'react-native';
+import { Linking, Text } from 'react-native';
 
 import {
   ErrorText,
@@ -9,6 +10,7 @@ import {
   Title,
   Card,
 } from '../../components/ui';
+import { customAlert } from '../../components/custom-alert';
 import { theme } from '../../constants/autocares-theme';
 import { getCurrentCoords } from '../../lib/location';
 import { replace } from '../../lib/nav';
@@ -40,7 +42,7 @@ export default function SosScreen() {
     });
     setLoading(false);
     if (createError || !request) {
-      Alert.alert('SOS failed', createError ?? 'Unknown error');
+      customAlert.error('SOS failed', createError ?? 'Unknown error');
       return;
     }
     replace(`/(customer)/tracking/${request.id}`);
@@ -73,6 +75,7 @@ export default function SosScreen() {
         disabled={loading}
         danger
       />
+      <AdminSupportCard role="customer" style={{ marginTop: 12, marginBottom: 12 }} />
       <PrimaryButton
         label="Call emergency (local)"
         onPress={() => Linking.openURL('tel:911')}

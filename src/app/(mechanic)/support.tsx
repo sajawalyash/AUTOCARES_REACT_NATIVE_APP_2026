@@ -1,8 +1,9 @@
+import AdminSupportCard from '../../components/admin-support-card';
 import { useState } from 'react';
-import { Alert } from 'react-native';
 
 import { Field, Label, PrimaryButton, Screen, Subtitle, Title } from '../../components/ui';
 import { createSupportTicket } from '../../lib/support';
+import { customAlert } from '../../components/custom-alert';
 import { useAuth } from '../../providers/auth-provider';
 
 export default function MechanicSupport() {
@@ -12,7 +13,7 @@ export default function MechanicSupport() {
 
   async function submit() {
     if (!user || !subject.trim() || !message.trim()) {
-      Alert.alert('Missing fields', 'Subject and message required.');
+      customAlert.warning('Missing fields', 'Subject and message required.');
       return;
     }
     const { error } = await createSupportTicket({
@@ -20,9 +21,9 @@ export default function MechanicSupport() {
       subject: subject.trim(),
       message: message.trim(),
     });
-    if (error) Alert.alert('Failed', error);
+    if (error) customAlert.error('Failed', error);
     else {
-      Alert.alert('Sent', 'Support ticket created.');
+      customAlert.success('Sent', 'Support ticket created.');
       setSubject('');
       setMessage('');
     }
@@ -30,6 +31,7 @@ export default function MechanicSupport() {
 
   return (
     <Screen>
+      <AdminSupportCard role="mechanic" style={{ marginBottom: 14 }} />
       <Title>Support</Title>
       <Subtitle>Contact AutoCares support.</Subtitle>
       <Label>Subject</Label>
