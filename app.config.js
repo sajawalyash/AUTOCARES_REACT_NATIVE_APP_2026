@@ -24,7 +24,9 @@ module.exports = ({ config }) => ({
     },
   },
   plugins: [
-    ...expoConfig.plugins,
+    ...(expoConfig.plugins ?? []),
+    'expo-image',
+    'expo-web-browser',
     [
       'react-native-maps',
       {
@@ -34,4 +36,3 @@ module.exports = ({ config }) => ({
     ],
   ],
 });
-
