@@ -16,6 +16,7 @@ export interface AdminSupportCardProps {
   style?: StyleProp<ViewStyle>;
   title?: string;
   subtitle?: string;
+  showPhone?: boolean;
 }
 
 export default function AdminSupportCard({
@@ -25,6 +26,7 @@ export default function AdminSupportCard({
   style,
   title,
   subtitle,
+  showPhone = false,
 }: AdminSupportCardProps) {
   const [pulseAnim] = useState(() => new Animated.Value(1));
 
@@ -63,8 +65,15 @@ export default function AdminSupportCard({
             <Animated.View style={[styles.liveDot, { opacity: pulseAnim }]} />
             <Text style={styles.liveBadgeText}>{AUTOCARES_SUPPORT_CONFIG.badge}</Text>
           </View>
-          <Text style={styles.helplinePhoneCompact}>{AUTOCARES_SUPPORT_CONFIG.formatted}</Text>
+          <View style={styles.hoursTag}>
+            <Ionicons name="shield-checkmark" size={11} color="#166534" />
+            <Text style={styles.hoursTagText}>Official 24/7</Text>
+          </View>
         </View>
+
+        {showPhone && (
+          <Text style={styles.helplinePhoneCompact}>{AUTOCARES_SUPPORT_CONFIG.formatted}</Text>
+        )}
 
         <View style={styles.compactButtonsRow}>
           <Pressable
@@ -80,8 +89,8 @@ export default function AdminSupportCard({
             style={({ pressed }) => [styles.compactCallBtn, pressed && styles.btnPressed]}
             onPress={handleCall}
             accessibilityRole="button"
-            accessibilityLabel={`Call AutoCares Helpline at ${AUTOCARES_SUPPORT_CONFIG.formatted}`}>
-            <Ionicons name="call" size={14} color="#15803D" />
+            accessibilityLabel="Call AutoCares Helpline">
+            <Ionicons name="call" size={13} color="#0F172A" />
             <Text style={styles.compactCallBtnText}>Call Helpline</Text>
           </Pressable>
         </View>
@@ -95,26 +104,27 @@ export default function AdminSupportCard({
       <View style={styles.topRow}>
         <View style={styles.liveBadge}>
           <Animated.View style={[styles.liveDot, { opacity: pulseAnim }]} />
-          <Text style={styles.liveBadgeText}>{AUTOCARES_SUPPORT_CONFIG.badge}</Text>
+          <Text style={styles.liveBadgeText}>ADMIN SUPPORT 24/7</Text>
         </View>
         <View style={styles.hoursTag}>
-          <Ionicons name="shield-checkmark" size={12} color="#166534" />
-          <Text style={styles.hoursTagText}>24/7 Official</Text>
+          <Ionicons name="shield-checkmark" size={13} color="#166534" />
+          <Text style={styles.hoursTagText}>24/7 Official Helpline</Text>
         </View>
       </View>
 
       {/* Main Content Area */}
       <View style={styles.contentRow}>
         <View style={styles.iconContainer}>
-          <Ionicons name="headset" size={24} color="#15803D" />
+          <Ionicons name="headset" size={22} color="#15803D" />
         </View>
         <View style={styles.textContainer}>
           <Text style={styles.title}>{title ?? 'AutoCares Admin Helpline'}</Text>
-          <Text style={styles.phoneHighlight}>
-            📞 {AUTOCARES_SUPPORT_CONFIG.formatted}{' '}
-            <Text style={styles.phoneInternational}>({AUTOCARES_SUPPORT_CONFIG.international})</Text>
-          </Text>
-          <Text style={styles.message}>
+          {showPhone && (
+            <Text style={styles.phoneHighlight}>
+              📞 {AUTOCARES_SUPPORT_CONFIG.formatted}
+            </Text>
+          )}
+          <Text style={styles.message} numberOfLines={3}>
             {subtitle ?? AUTOCARES_SUPPORT_CONFIG.message}
           </Text>
         </View>
@@ -127,17 +137,21 @@ export default function AdminSupportCard({
           onPress={handleWhatsApp}
           accessibilityRole="button"
           accessibilityLabel="Open WhatsApp Support with AutoCares Admin">
-          <FontAwesome name="whatsapp" size={18} color="#FFFFFF" />
-          <Text style={styles.whatsAppBtnText}>WhatsApp Admin Support</Text>
+          <View style={styles.btnContent}>
+            <FontAwesome name="whatsapp" size={18} color="#FFFFFF" />
+            <Text style={styles.whatsAppBtnText}>WhatsApp Support</Text>
+          </View>
         </Pressable>
 
         <Pressable
           style={({ pressed }) => [styles.callBtn, pressed && styles.btnPressed]}
           onPress={handleCall}
           accessibilityRole="button"
-          accessibilityLabel={`Call AutoCares Helpline at ${AUTOCARES_SUPPORT_CONFIG.formatted}`}>
-          <Ionicons name="call-outline" size={18} color="#0F172A" />
-          <Text style={styles.callBtnText}>Call Helpline</Text>
+          accessibilityLabel="Call AutoCares Helpline">
+          <View style={styles.btnContent}>
+            <Ionicons name="call" size={15} color="#0F172A" />
+            <Text style={styles.callBtnText}>Call Helpline</Text>
+          </View>
         </Pressable>
       </View>
     </View>
@@ -147,10 +161,10 @@ export default function AdminSupportCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1.5,
     borderColor: '#BBF7D0',
-    padding: 16,
+    padding: 14,
     ...theme.shadows.card,
     overflow: 'hidden',
   },
@@ -158,14 +172,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   liveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#DCFCE7',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 3.5,
     borderRadius: 9999,
     gap: 6,
     borderWidth: 1,
@@ -181,7 +195,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     color: '#166534',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   hoursTag: {
     flexDirection: 'row',
@@ -196,81 +210,87 @@ const styles = StyleSheet.create({
   contentRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 14,
+    marginBottom: 12,
+    alignItems: 'flex-start',
   },
   iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 42,
+    height: 42,
+    borderRadius: 12,
     backgroundColor: '#F0FDF4',
-    borderWidth: 1,
+    borderWidth: 1.2,
     borderColor: '#BBF7D0',
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 2,
   },
   textContainer: {
     flex: 1,
   },
   title: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: '#0F172A',
     letterSpacing: -0.2,
+    marginBottom: 3,
   },
   phoneHighlight: {
-    fontSize: 14,
-    fontWeight: '800',
+    fontSize: 13,
+    fontWeight: '700',
     color: '#15803D',
-    marginTop: 2,
-  },
-  phoneInternational: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#166534',
+    marginBottom: 2,
   },
   message: {
-    fontSize: 12.5,
+    fontSize: 12,
     color: '#475569',
-    lineHeight: 18,
-    marginTop: 4,
+    lineHeight: 17,
   },
   buttonsRow: {
     flexDirection: 'row',
     gap: 10,
   },
   whatsAppBtn: {
-    flex: 1.3,
+    flex: 1,
+    backgroundColor: '#25D366',
+    borderRadius: 12,
+    height: 42,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#25D366',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  btnContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#25D366',
-    borderRadius: 14,
-    height: 44,
-    paddingHorizontal: 12,
-    gap: 8,
+    gap: 6,
   },
   whatsAppBtnText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
+    letterSpacing: -0.1,
   },
   callBtn: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: '#F8FAFC',
-    borderRadius: 14,
-    height: 44,
-    paddingHorizontal: 12,
-    gap: 6,
-    borderWidth: 1.5,
+    borderRadius: 12,
+    height: 42,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.2,
     borderColor: '#E2E8F0',
   },
   callBtnText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#0F172A',
+    letterSpacing: -0.1,
   },
   btnPressed: {
     opacity: 0.88,
@@ -278,8 +298,8 @@ const styles = StyleSheet.create({
   },
   compactCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1.5,
+    borderRadius: 14,
+    borderWidth: 1.2,
     borderColor: '#BBF7D0',
     padding: 12,
     ...theme.shadows.card,
@@ -291,9 +311,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   helplinePhoneCompact: {
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 12,
+    fontWeight: '700',
     color: '#15803D',
+    marginBottom: 6,
   },
   compactButtonsRow: {
     flexDirection: 'row',
@@ -306,7 +327,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#25D366',
     borderRadius: 10,
-    height: 38,
+    height: 36,
     gap: 6,
   },
   compactCallBtn: {
@@ -314,11 +335,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.2,
+    borderColor: '#E2E8F0',
     borderRadius: 10,
-    height: 38,
+    height: 36,
     gap: 6,
   },
   compactBtnText: {
@@ -329,6 +350,6 @@ const styles = StyleSheet.create({
   compactCallBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#15803D',
+    color: '#0F172A',
   },
 });

@@ -186,7 +186,7 @@ export const AUTOCARES_SUPPORT_CONFIG = {
   badge: 'ADMIN SUPPORT AVAILABLE 24/7',
   availability: 'Available 24/7',
   message:
-    'Need assistance? Our AutoCares support team is available 24/7 to help customers and mechanics with service requests, technical issues, emergency assistance, and general inquiries.',
+    'Need assistance? Our AutoCares 24/7 support team is available to help with service requests, job dispatch, and roadside inquiries.',
 };
 
 export const AUTOCARES_SUPPORT_PHONE =
@@ -210,7 +210,7 @@ export async function callAdminHelpline(): Promise<void> {
       }
     },
     undefined,
-    'Call 0339 0892660',
+    'Call Helpline',
     'Cancel'
   );
 }
