@@ -62,6 +62,10 @@ export default function WhatsAppContactCard({
       : formatted
     : phone || 'Phone not provided';
 
+  const isTwoWheeler =
+    vehicleType?.toLowerCase().includes('bike') ||
+    vehicleType?.toLowerCase().includes('scooter');
+
   function handleWhatsApp() {
     if (!isAcceptedOrActive) return;
     openWhatsAppChat({
@@ -80,20 +84,21 @@ export default function WhatsAppContactCard({
   if (compact) {
     return (
       <View style={styles.compactContainer}>
+        {/* Header Block */}
         <View style={styles.compactHeaderRow}>
           <View style={styles.compactNameBlock}>
             {avatarUrl ? (
-              <Avatar url={avatarUrl} name={targetLabel} size={36} />
+              <Avatar url={avatarUrl} name={targetLabel} size={38} />
             ) : (
               <View style={styles.avatarMini}>
                 <Ionicons
                   name={isCustomer ? 'construct' : 'person'}
-                  size={15}
+                  size={16}
                   color={theme.colors.primaryDark}
                 />
               </View>
             )}
-            <View style={{ flex: 1, marginLeft: 8 }}>
+            <View style={{ flex: 1, marginLeft: 9 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Text style={styles.compactLabel}>
                   {isCustomer ? 'Assigned Mechanic' : 'Customer'}
@@ -110,11 +115,34 @@ export default function WhatsAppContactCard({
               <Text style={styles.compactPhoneText}>📞 {displayPhone}</Text>
             </View>
           </View>
+
           <View style={styles.refPill}>
             <Text style={styles.refPillText}>{requestRef}</Text>
           </View>
         </View>
 
+        {/* Customer Vehicle Tag for Mechanic View */}
+        {!isCustomer && (vehicleType || vehicleDetails) && (
+          <View style={styles.compactVehicleRow}>
+            <View style={styles.compactVehicleBadge}>
+              <Ionicons
+                name={isTwoWheeler ? 'bicycle' : 'car'}
+                size={12}
+                color="#0284C7"
+              />
+              <Text style={styles.compactVehicleBadgeText}>
+                {(vehicleType || 'VEHICLE').toUpperCase()}
+              </Text>
+            </View>
+            {vehicleDetails ? (
+              <Text style={styles.compactVehicleDetailsText} numberOfLines={1}>
+                {vehicleDetails}
+              </Text>
+            ) : null}
+          </View>
+        )}
+
+        {/* Action Buttons: Live WhatsApp Chat & Call */}
         {isAcceptedOrActive ? (
           <View style={styles.compactButtonsRow}>
             <Pressable
@@ -122,8 +150,8 @@ export default function WhatsAppContactCard({
               style={({ pressed }) => [styles.whatsappBtn, pressed && styles.btnPressed]}
               accessibilityRole="button"
               accessibilityLabel={`Chat with ${targetLabel} on WhatsApp`}>
-              <FontAwesome name="whatsapp" size={15} color="#FFFFFF" />
-              <Text style={styles.whatsappBtnText}>WhatsApp</Text>
+              <FontAwesome name="whatsapp" size={16} color="#FFFFFF" />
+              <Text style={styles.whatsappBtnText}>WhatsApp Chat</Text>
             </Pressable>
 
             <Pressable
@@ -151,12 +179,12 @@ export default function WhatsAppContactCard({
       {/* Header with Avatar & Details */}
       <View style={styles.cardHeader}>
         {avatarUrl ? (
-          <Avatar url={avatarUrl} name={targetLabel} size={50} />
+          <Avatar url={avatarUrl} name={targetLabel} size={52} />
         ) : (
           <View style={styles.avatarLarge}>
             <Ionicons
               name={isCustomer ? 'construct' : 'person'}
-              size={24}
+              size={26}
               color={theme.colors.primaryDark}
             />
           </View>
@@ -184,30 +212,41 @@ export default function WhatsAppContactCard({
 
           {/* Phone Display */}
           <Text style={styles.phoneRowText}>
-            📞 <Text style={{ fontWeight: '700' }}>{displayPhone}</Text>
+            📞 Contact: <Text style={styles.phoneRowNumber}>{displayPhone}</Text>
           </Text>
         </View>
       </View>
 
       {/* Extra Details Context Section */}
       <View style={styles.detailsSection}>
-        {/* For Mechanic viewing Customer: Vehicle & Location Details */}
+        {/* For Mechanic viewing Customer: Prominent Vehicle & Location Details */}
         {!isCustomer && (
           <>
-            {(vehicleType || vehicleDetails) && (
-              <View style={styles.detailRow}>
-                <Ionicons name="car-sport-outline" size={15} color={theme.colors.primary} />
-                <Text style={styles.detailText}>
-                  {vehicleType ? `[${vehicleType}] ` : ''}
-                  {vehicleDetails ?? 'Vehicle details shared'}
-                </Text>
+            <View style={styles.vehicleHighlightBox}>
+              <View style={styles.vehicleBadgeRow}>
+                <View style={styles.vehicleTypeBadge}>
+                  <Ionicons
+                    name={isTwoWheeler ? 'bicycle' : 'car'}
+                    size={14}
+                    color="#0284C7"
+                  />
+                  <Text style={styles.vehicleTypeBadgeText}>
+                    {(vehicleType || 'VEHICLE').toUpperCase()}
+                  </Text>
+                </View>
+                {vehicleDetails ? (
+                  <Text style={styles.vehicleDetailsText} numberOfLines={1}>
+                    {vehicleDetails}
+                  </Text>
+                ) : null}
               </View>
-            )}
+            </View>
+
             {problemDescription && (
               <View style={styles.detailRow}>
                 <Ionicons name="alert-circle-outline" size={15} color={theme.colors.orange} />
                 <Text style={styles.detailText} numberOfLines={2}>
-                  Problem: {problemDescription}
+                  Problem: <Text style={{ fontWeight: '700' }}>{problemDescription}</Text>
                 </Text>
               </View>
             )}
@@ -232,7 +271,7 @@ export default function WhatsAppContactCard({
             accessibilityRole="button"
             accessibilityLabel={`Chat with ${targetLabel} on WhatsApp`}>
             <FontAwesome name="whatsapp" size={18} color="#FFFFFF" />
-            <Text style={styles.fullWhatsAppBtnText}>WhatsApp Chat</Text>
+            <Text style={styles.fullWhatsAppBtnText}>Live WhatsApp Chat</Text>
           </Pressable>
 
           <Pressable
@@ -241,7 +280,7 @@ export default function WhatsAppContactCard({
             accessibilityRole="button"
             accessibilityLabel={`Call ${targetLabel}`}>
             <Ionicons name="call" size={17} color="#0F172A" />
-            <Text style={styles.fullCallBtnText}>Call Now</Text>
+            <Text style={styles.fullCallBtnText}>Call Customer</Text>
           </Pressable>
         </View>
       ) : (
@@ -257,7 +296,7 @@ export default function WhatsAppContactCard({
       <View style={styles.guidanceBox}>
         <Ionicons name="shield-checkmark-outline" size={13} color="#15803D" />
         <Text style={styles.guidanceText}>
-          Direct two-way coordination enabled. All communication is private and encrypted.
+          Direct two-way live coordination enabled. All communication is private.
         </Text>
       </View>
     </View>
@@ -281,8 +320,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   avatarLarge: {
-    width: 50,
-    height: 50,
+    width: 52,
+    height: 52,
     borderRadius: 16,
     backgroundColor: theme.colors.primaryLight,
     borderWidth: 1.5,
@@ -313,17 +352,57 @@ const styles = StyleSheet.create({
   },
   phoneRowText: {
     fontSize: 13,
+    color: '#334155',
+    marginTop: 4,
+  },
+  phoneRowNumber: {
+    fontWeight: '800',
     color: '#0F172A',
-    marginTop: 3,
+    fontSize: 13.5,
   },
   detailsSection: {
     backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    padding: 10,
+    borderRadius: 14,
+    padding: 12,
     marginBottom: 14,
-    gap: 6,
+    gap: 8,
     borderWidth: 1,
     borderColor: '#F1F5F9',
+  },
+  vehicleHighlightBox: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 10,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  vehicleBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  vehicleTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  vehicleTypeBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0369A1',
+    letterSpacing: 0.5,
+  },
+  vehicleDetailsText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+    flex: 1,
   },
   detailRow: {
     flexDirection: 'row',
@@ -341,14 +420,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   fullWhatsAppBtn: {
-    flex: 1.2,
+    flex: 1.3,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#25D366',
     borderRadius: 14,
-    height: 44,
+    height: 46,
     gap: 8,
+    ...theme.shadows.card,
   },
   fullWhatsAppBtnText: {
     fontSize: 13.5,
@@ -362,9 +442,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#F1F5F9',
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: '#CBD5E1',
     borderRadius: 14,
-    height: 44,
+    height: 46,
     gap: 6,
   },
   fullCallBtnText: {
@@ -418,14 +498,14 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    padding: 10,
+    padding: 11,
     marginTop: 8,
   },
   compactHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   compactNameBlock: {
     flexDirection: 'row',
@@ -433,8 +513,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   avatarMini: {
-    width: 34,
-    height: 34,
+    width: 36,
+    height: 36,
     borderRadius: 10,
     backgroundColor: theme.colors.primaryLight,
     alignItems: 'center',
@@ -457,23 +537,55 @@ const styles = StyleSheet.create({
     color: '#0F172A',
   },
   compactPhoneText: {
-    fontSize: 11.5,
-    color: '#334155',
-    fontWeight: '600',
-    marginTop: 1,
+    fontSize: 12,
+    color: '#0F172A',
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  compactVehicleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F9FF',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    gap: 6,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  compactVehicleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  compactVehicleBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#0369A1',
+  },
+  compactVehicleDetailsText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+    flex: 1,
   },
   compactButtonsRow: {
     flexDirection: 'row',
     gap: 8,
   },
   whatsappBtn: {
-    flex: 1.1,
+    flex: 1.2,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#25D366',
     borderRadius: 10,
-    height: 36,
+    height: 38,
     gap: 6,
   },
   whatsappBtnText: {
@@ -487,10 +599,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#CBD5E1',
     borderRadius: 10,
-    height: 36,
+    height: 38,
     gap: 6,
   },
   callBtnText: {

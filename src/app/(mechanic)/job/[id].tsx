@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import {
   Card,
@@ -196,7 +196,7 @@ export default function JobDetailScreen() {
         <ErrorText message={categoryError} />
 
         {/* Customer WhatsApp & Direct Phone Contact */}
-        {['accepted', 'on_the_way', 'en_route', 'arrived', 'in_progress'].includes(job.status) && (
+        {['accepted', 'on_the_way', 'en_route', 'arrived', 'in_progress', 'completed'].includes(job.status) && (
           <WhatsAppContactCard
             role="mechanic"
             requestId={job.id}
@@ -218,8 +218,13 @@ export default function JobDetailScreen() {
         {/* Customer & Incident Details */}
         <Card style={styles.customerCard}>
           <Text style={styles.detailTitle}>Customer Details</Text>
+          <Pressable onPress={() => job.profiles?.phone ? Linking.openURL(`tel:${job.profiles.phone}`) : null} disabled={!job.profiles?.phone}>
+            <Text style={styles.detailLine}>
+              Phone: <Text style={{ fontWeight: '700', color: job.profiles?.phone ? '#15803D' : theme.colors.text, textDecorationLine: job.profiles?.phone ? 'underline' : 'none' }}>{job.profiles?.phone || 'Not provided'}</Text>
+            </Text>
+          </Pressable>
           <Text style={styles.detailLine}>
-            Phone: {job.profiles?.phone || 'Not provided'}
+            Vehicle Type: <Text style={{ fontWeight: '700', color: theme.colors.primaryDark }}>{(job.vehicles?.vehicle_type || 'Vehicle').toUpperCase()}</Text>
           </Text>
           <Text style={styles.detailLine}>
             Vehicle: {job.vehicles ? vehicleLabel(job.vehicles) : 'Not specified'}

@@ -18,7 +18,7 @@ import { go } from '../../../lib/nav';
 import { formatPKR } from '../../../lib/payments';
 import { listMechanicJobs } from '../../../lib/requests';
 import type { ServiceRequest } from '../../../lib/types';
-import { FIXED_DIAGNOSIS_FEE, STATUS_LABELS } from '../../../lib/types';
+import { FIXED_DIAGNOSIS_FEE, STATUS_LABELS, vehicleLabel } from '../../../lib/types';
 import { useAuth } from '../../../providers/auth-provider';
 
 export default function MyJobsScreen() {
@@ -63,7 +63,7 @@ export default function MyJobsScreen() {
           contentContainerStyle={{ paddingBottom: 28 }}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
-            const isAssigned = ['accepted', 'en_route', 'in_progress'].includes(item.status);
+            const isAssigned = ['accepted', 'on_the_way', 'en_route', 'arrived', 'in_progress', 'completed'].includes(item.status);
             return (
               <Card style={{ marginBottom: 10 }}>
                 <Pressable onPress={() => go(`/(mechanic)/job/${item.id}`)}>
@@ -88,6 +88,15 @@ export default function MyJobsScreen() {
                     requestId={item.id}
                     phone={item.profiles?.phone}
                     participantName={item.profiles?.full_name}
+                    avatarUrl={item.profiles?.avatar_url}
+                    vehicleType={item.vehicles?.vehicle_type}
+                    vehicleDetails={item.vehicles ? vehicleLabel(item.vehicles) : null}
+                    problemDescription={item.description || problemLabels[item.problem_type]}
+                    locationText={
+                      item.customer_lat != null
+                        ? `GPS: ${item.customer_lat.toFixed(4)}, ${item.customer_lng?.toFixed(4)}`
+                        : null
+                    }
                     status={item.status}
                   />
                 )}

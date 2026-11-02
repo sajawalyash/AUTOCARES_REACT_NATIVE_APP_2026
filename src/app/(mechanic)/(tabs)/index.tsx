@@ -23,7 +23,7 @@ import {
 } from '../../../lib/whatsapp';
 import { theme } from '../../../constants/autocares-theme';
 import { getMechanicProfile } from '../../../lib/mechanics';
-import type { MechanicProfile, ServiceRequest } from '../../../lib/types';
+import { vehicleLabel, type MechanicProfile, type ServiceRequest } from '../../../lib/types';
 import { useAuth } from '../../../providers/auth-provider';
 import { useNotifications } from '../../../providers/notification-provider';
 
@@ -345,6 +345,15 @@ export default function MechanicHome() {
                   requestId={activeJob.id}
                   phone={activeJob.profiles?.phone}
                   participantName={activeJob.profiles?.full_name}
+                  avatarUrl={activeJob.profiles?.avatar_url}
+                  vehicleType={activeJob.vehicles?.vehicle_type}
+                  vehicleDetails={activeJob.vehicles ? vehicleLabel(activeJob.vehicles) : null}
+                  problemDescription={activeJob.description || activeJob.problem_type}
+                  locationText={
+                    activeJob.customer_lat != null
+                      ? `GPS: ${activeJob.customer_lat.toFixed(4)}, ${activeJob.customer_lng?.toFixed(4)}`
+                      : null
+                  }
                   status={activeJob.status}
                 />
               </Card>
