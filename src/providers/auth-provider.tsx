@@ -151,6 +151,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
               cnic_number: cnicNumber,
               years_experience: yearsExperience,
               mechanic_type: mechanicType,
+              verification_status: role === 'mechanic' ? 'pending' : undefined,
             },
           },
         });

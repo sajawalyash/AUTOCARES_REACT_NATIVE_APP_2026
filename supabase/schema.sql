@@ -111,6 +111,9 @@ select public._autocares_add_column(
   'mechanic_type text check (mechanic_type in (''Car Mechanic'', ''Bike Mechanic''))'
 );
 
+alter table public.mechanic_profiles
+  alter column verification_status set default 'pending';
+
 create table if not exists public.mechanic_private_details (
   user_id uuid primary key references public.profiles (id) on delete cascade,
   cnic_number text not null check (cnic_number ~ '^[0-9]{13}$'),
@@ -410,7 +413,8 @@ begin
       workshop_name,
       mechanic_type,
       specialties,
-      experience_years
+      experience_years,
+      verification_status
     )
     values (
       new.id,
@@ -433,7 +437,8 @@ begin
           else 0
         end
         else 0
-      end
+      end,
+      'pending'
     )
     on conflict (user_id) do update
       set
@@ -550,10 +555,17 @@ language plpgsql
 set search_path = public
 as $$
 begin
+  if tg_op = 'INSERT' then
+    if not public.is_admin() then
+      new.verification_status := 'pending';
+    else
+      new.verification_status := coalesce(new.verification_status, 'pending');
+    end if;
+    return new;
+  end if;
+
   if auth.uid() is not null and not public.is_admin() then
-    if tg_op = 'INSERT' and new.verification_status <> 'pending' then
-      raise exception 'Only an administrator can approve a mechanic account.';
-    elsif tg_op = 'UPDATE'
+    if tg_op = 'UPDATE'
       and new.verification_status is distinct from old.verification_status then
       raise exception 'Only an administrator can change mechanic verification status.';
     end if;
