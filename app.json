@@ -56,6 +56,7 @@
       "predictiveBackGestureEnabled": false
     },
     "plugins": [
+      "./plugins/with-build-config",
       "expo-router",
       [
         "expo-splash-screen",
