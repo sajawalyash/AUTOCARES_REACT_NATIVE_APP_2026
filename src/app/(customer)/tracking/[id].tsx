@@ -13,7 +13,7 @@ import {
   Subtitle,
   Title,
 } from '../../../components/ui';
-import MapView, { Marker } from '../../../components/roadside-map';
+import MapView, { Marker, PROVIDER_GOOGLE } from '../../../components/roadside-map';
 import WhatsAppContactCard from '../../../components/whatsapp-contact-card';
 import AdminSupportCard from '../../../components/admin-support-card';
 import { openWhatsAppSupport, getShortRequestRef } from '../../../lib/whatsapp';
@@ -242,6 +242,7 @@ export default function TrackingScreen() {
         {/* Map View */}
         {customerCoord ? (
           <MapView
+            provider={PROVIDER_GOOGLE}
             style={styles.map}
             initialRegion={{
               ...customerCoord,
@@ -525,6 +526,7 @@ const styles = StyleSheet.create({
   map: {
     height: 240,
     borderRadius: theme.radius.lg,
+    overflow: 'hidden',
     marginVertical: 12,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -532,6 +534,7 @@ const styles = StyleSheet.create({
   mapFallback: {
     height: 90,
     borderRadius: theme.radius.lg,
+    overflow: 'hidden',
     backgroundColor: theme.colors.primaryLight,
     borderWidth: 1,
     borderColor: theme.colors.primarySubtle,
@@ -551,6 +554,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     borderWidth: 1,
     borderRadius: theme.radius.lg,
+    overflow: 'hidden',
     padding: 18,
     marginVertical: 12,
     ...theme.shadows.cardElevated,
