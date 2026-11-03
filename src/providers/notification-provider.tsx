@@ -123,9 +123,14 @@ export function NotificationProvider({ children }: PropsWithChildren) {
       return;
     }
     setIsLoading(true);
-    const { notifications: list } = await listNotifications(user.id);
-    setNotifications(list);
-    setIsLoading(false);
+    try {
+      const { notifications: list } = await listNotifications(user.id);
+      setNotifications(list);
+    } catch (err) {
+      console.warn('Failed to load notifications:', err);
+    } finally {
+      setIsLoading(false);
+    }
   }, [user]);
 
   // Initial fetch and Realtime Subscription
@@ -135,74 +140,89 @@ export function NotificationProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    listNotifications(user.id).then(({ notifications: list }) => {
-      if (isMounted) {
-        setNotifications(list);
-      }
-    });
+    listNotifications(user.id)
+      .then(({ notifications: list }) => {
+        if (isMounted) {
+          setNotifications(list);
+        }
+      })
+      .catch((err) => {
+        console.warn('Initial notifications fetch skipped/failed:', err);
+      });
 
     // Set up Supabase Realtime Channel
-    const channelName = `realtime:notifications:${user.id}`;
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const newNotif = payload.new as AppNotification;
-          setNotifications((prev) => [newNotif, ...prev.filter((n) => n.id !== newNotif.id)]);
+    let channel: any;
+    try {
+      const channelName = `realtime:notifications:${user.id}`;
+      channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            const newNotif = payload.new as AppNotification;
+            setNotifications((prev) => [newNotif, ...prev.filter((n) => n.id !== newNotif.id)]);
 
-          // Trigger vibration feedback
-          if (Platform.OS !== 'web') {
-            try {
-              Vibration.vibrate(250);
-            } catch {
-              // Ignore if unsupported on current environment
+            // Trigger vibration feedback
+            if (Platform.OS !== 'web') {
+              try {
+                Vibration.vibrate(250);
+              } catch {
+                // Ignore if unsupported on current environment
+              }
             }
-          }
 
-          // Show floating in-app banner
-          showToast(newNotif);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const updated = payload.new as AppNotification;
-          setNotifications((prev) =>
-            prev.map((n) => (n.id === updated.id ? updated : n))
-          );
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const deleted = payload.old as { id: string };
-          setNotifications((prev) => prev.filter((n) => n.id !== deleted.id));
-        }
-      )
-      .subscribe();
+            // Show floating in-app banner
+            showToast(newNotif);
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            const updated = payload.new as AppNotification;
+            setNotifications((prev) =>
+              prev.map((n) => (n.id === updated.id ? updated : n))
+            );
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            const deleted = payload.old as { id: string };
+            setNotifications((prev) => prev.filter((n) => n.id !== deleted.id));
+          }
+        )
+        .subscribe();
+    } catch (err) {
+      console.warn('Failed to subscribe to realtime notifications channel:', err);
+    }
 
     return () => {
       isMounted = false;
-      supabase.removeChannel(channel);
+      if (channel) {
+        try {
+          supabase.removeChannel(channel);
+        } catch {
+          // ignore
+        }
+      }
     };
   }, [showToast, user]);
 
@@ -211,13 +231,21 @@ export function NotificationProvider({ children }: PropsWithChildren) {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
     );
-    await markNotificationRead(id);
+    try {
+      await markNotificationRead(id);
+    } catch (err) {
+      console.warn('Failed to mark notification read:', err);
+    }
   }, []);
 
   const markAllAsRead = useCallback(async () => {
     if (!user) return;
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    await markAllNotificationsRead(user.id);
+    try {
+      await markAllNotificationsRead(user.id);
+    } catch (err) {
+      console.warn('Failed to mark all notifications read:', err);
+    }
   }, [user]);
 
   const handleToastPress = useCallback(() => {

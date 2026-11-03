@@ -59,8 +59,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setProfile(null);
       return;
     }
-    const { profile: next } = await fetchProfile(userId);
-    setProfile(next);
+    try {
+      const { profile: next } = await fetchProfile(userId);
+      setProfile(next);
+    } catch (err) {
+      console.warn('Failed to fetch profile:', err);
+      setProfile(null);
+    }
   }, []);
 
   const refreshProfile = useCallback(async () => {
@@ -70,12 +75,21 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     let isMounted = true;
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!isMounted) return;
-      setSession(data.session);
-      await loadProfile(data.session?.user?.id);
-      if (isMounted) setIsLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(async ({ data }) => {
+        if (!isMounted) return;
+        setSession(data?.session ?? null);
+        await loadProfile(data?.session?.user?.id);
+        if (isMounted) setIsLoading(false);
+      })
+      .catch((err) => {
+        console.warn('Could not restore auth session:', err);
+        if (isMounted) {
+          setSession(null);
+          setIsLoading(false);
+        }
+      });
 
     const {
       data: { subscription },
@@ -105,22 +119,27 @@ export function AuthProvider({ children }: PropsWithChildren) {
       refreshProfile,
       async signIn(email, password) {
         setIsLoading(true);
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-        if (error) {
-          setIsLoading(false);
-          return { error: error.message };
-        }
-        if (data.session) {
-          setSession(data.session);
-          if (data.session.user?.id) {
-            await loadProfile(data.session.user.id);
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password,
+          });
+          if (error) {
+            setIsLoading(false);
+            return { error: error.message };
           }
+          if (data.session) {
+            setSession(data.session);
+            if (data.session.user?.id) {
+              await loadProfile(data.session.user.id);
+            }
+          }
+          setIsLoading(false);
+          return { error: null };
+        } catch (err: any) {
+          setIsLoading(false);
+          return { error: err?.message || 'Login failed. Please check network connection.' };
         }
-        setIsLoading(false);
-        return { error: null };
       },
       async signUp({
         email,
@@ -136,43 +155,56 @@ export function AuthProvider({ children }: PropsWithChildren) {
         mechanicType,
       }) {
         setIsLoading(true);
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            data: {
-              first_name: firstName.trim(),
-              last_name: lastName.trim(),
-              full_name: `${firstName.trim()} ${lastName.trim()}`,
-              phone: phone.trim(),
-              role,
-              vehicle_type: vehicleType,
-              business_name: businessName,
-              cnic_number: cnicNumber,
-              years_experience: yearsExperience,
-              mechanic_type: mechanicType,
-              verification_status: role === 'mechanic' ? 'pending' : undefined,
+        try {
+          const { data, error } = await supabase.auth.signUp({
+            email: email.trim(),
+            password,
+            options: {
+              data: {
+                first_name: firstName.trim(),
+                last_name: lastName.trim(),
+                full_name: `${firstName.trim()} ${lastName.trim()}`,
+                phone: phone.trim(),
+                role,
+                vehicle_type: vehicleType,
+                business_name: businessName,
+                cnic_number: cnicNumber,
+                years_experience: yearsExperience,
+                mechanic_type: mechanicType,
+                verification_status: role === 'mechanic' ? 'pending' : undefined,
+              },
             },
-          },
-        });
+          });
 
-        if (data.session) {
-          setSession(data.session);
-          if (data.session.user?.id) {
-            await loadProfile(data.session.user.id);
+          if (data.session) {
+            setSession(data.session);
+            if (data.session.user?.id) {
+              await loadProfile(data.session.user.id);
+            }
           }
-        }
-        setIsLoading(false);
+          setIsLoading(false);
 
-        return {
-          error: error?.message ?? null,
-          needsEmailConfirmation: Boolean(data.user) && !data.session,
-        };
+          return {
+            error: error?.message ?? null,
+            needsEmailConfirmation: Boolean(data.user) && !data.session,
+          };
+        } catch (err: any) {
+          setIsLoading(false);
+          return {
+            error: err?.message || 'Registration failed. Please check network connection.',
+            needsEmailConfirmation: false,
+          };
+        }
       },
       async signOut() {
-        const { error } = await supabase.auth.signOut();
-        setProfile(null);
-        return { error: error?.message ?? null };
+        try {
+          const { error } = await supabase.auth.signOut();
+          setProfile(null);
+          return { error: error?.message ?? null };
+        } catch (err: any) {
+          setProfile(null);
+          return { error: err?.message ?? null };
+        }
       },
     };
   }, [session, profile, isLoading, refreshProfile, loadProfile]);

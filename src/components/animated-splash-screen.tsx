@@ -16,19 +16,8 @@ import {
 import { theme } from '../constants/autocares-theme';
 
 export type AnimatedSplashScreenProps = {
-  /**
-   * Callback fired once the complete 3.5s animation and exit transition finishes.
-   */
   onFinish?: () => void;
-  /**
-   * Optional readiness flag (e.g. Supabase session loaded).
-   * If provided and still false at the 3.0s mark, the splash will hold on its
-   * final frame until isReady becomes true before initiating the exit fade.
-   */
   isReady?: boolean;
-  /**
-   * Total splash duration in milliseconds (default: 3500).
-   */
   duration?: number;
 };
 
@@ -44,7 +33,6 @@ export function AnimatedSplashScreen({
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  // Stable animation values created via useMemo (compliant with React 19 compiler & hooks linting)
   const anims = useMemo(
     () => ({
       // Phase 4 screen exit
@@ -52,23 +40,22 @@ export function AnimatedSplashScreen({
       containerScale: new Animated.Value(1),
       // Phase 1 (0 – 1000ms): Logo fade & zoom
       logoOpacity: new Animated.Value(0),
-      logoScale: new Animated.Value(0.82),
+      logoScale: new Animated.Value(0.85),
       // Phase 2 (1000 – 2000ms): Title & logo bloom/pulse
       titleOpacity: new Animated.Value(0),
-      titleTranslateY: new Animated.Value(22),
+      titleTranslateY: new Animated.Value(20),
       glowOpacity: new Animated.Value(0),
       glowScale: new Animated.Value(0.85),
       logoPulse: new Animated.Value(1),
       // Phase 3 (2000 – 3000ms): Tagline & progress indicator
       taglineOpacity: new Animated.Value(0),
-      taglineTranslateY: new Animated.Value(14),
+      taglineTranslateY: new Animated.Value(12),
       progressAnim: new Animated.Value(0),
       footerOpacity: new Animated.Value(0),
     }),
     []
   );
 
-  // References for unmount cleanup and single execution guard
   const animationStarted = useRef(false);
   const onFinishCalled = useRef(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -83,7 +70,6 @@ export function AnimatedSplashScreen({
     onFinishRef.current = onFinish;
   }, [onFinish]);
 
-  // Calculate responsive logo dimensions
   const { width: windowWidth } = Dimensions.get('window');
   const logoWidth = Math.min(windowWidth * 0.56, 220);
   const logoHeight = Math.round(logoWidth / LOGO_ASPECT_RATIO);
@@ -93,17 +79,16 @@ export function AnimatedSplashScreen({
   const triggerExitAndFinish = useCallback(() => {
     if (onFinishCalled.current) return;
 
-    // Smooth exit transition (Phase 4: 3000ms - 3500ms)
     Animated.parallel([
       Animated.timing(anims.containerOpacity, {
         toValue: 0,
-        duration: 420,
+        duration: 380,
         easing: Easing.in(Easing.cubic),
         useNativeDriver: useNative,
       }),
       Animated.timing(anims.containerScale, {
         toValue: 1.03,
-        duration: 420,
+        duration: 380,
         easing: Easing.out(Easing.quad),
         useNativeDriver: useNative,
       }),
@@ -124,84 +109,81 @@ export function AnimatedSplashScreen({
     if (animationStarted.current) return;
     animationStarted.current = true;
 
-    // Hide native Expo splash screen immediately so our animated screen takes over seamlessly
-    SplashScreen.hideAsync().catch(() => {});
+    // Hide native Expo splash screen
+    try {
+      SplashScreen.hideAsync().catch(() => {});
+    } catch {
+      // ignore
+    }
 
-    // ==========================================
-    // PHASE 1 (0 – 1000ms): Logo Fade-In & Zoom-In
-    // ==========================================
+    // Phase 1 (0 – 1000ms): Logo Fade-In & Zoom-In
     Animated.parallel([
       Animated.timing(anims.logoOpacity, {
         toValue: 1,
-        duration: 900,
+        duration: 850,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: useNative,
       }),
       Animated.timing(anims.logoScale, {
         toValue: 1,
-        duration: 1000,
+        duration: 950,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: useNative,
       }),
     ]).start();
 
-    // ==========================================
-    // PHASE 2 (1000 – 2000ms): App Name & Logo Glow / Pulse
-    // ==========================================
+    // Phase 2 (1000 – 2000ms): App Name & Logo Glow / Pulse
     const tPhase2 = setTimeout(() => {
       Animated.parallel([
-        // App name fade-in and slide-up
         Animated.timing(anims.titleOpacity, {
           toValue: 1,
-          duration: 750,
+          duration: 700,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: useNative,
         }),
         Animated.timing(anims.titleTranslateY, {
           toValue: 0,
-          duration: 750,
+          duration: 700,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: useNative,
         }),
-        // Logo radiant glow bloom
         Animated.sequence([
           Animated.parallel([
             Animated.timing(anims.glowOpacity, {
-              toValue: 0.75,
-              duration: 500,
+              toValue: 0.65,
+              duration: 450,
               easing: Easing.out(Easing.ease),
               useNativeDriver: useNative,
             }),
             Animated.timing(anims.glowScale, {
-              toValue: 1.25,
-              duration: 500,
+              toValue: 1.2,
+              duration: 450,
               easing: Easing.out(Easing.ease),
               useNativeDriver: useNative,
             }),
-            // Subtle logo scale pulse
             Animated.timing(anims.logoPulse, {
               toValue: 1.04,
-              duration: 500,
+              duration: 450,
               easing: Easing.out(Easing.ease),
               useNativeDriver: useNative,
             }),
           ]),
           Animated.parallel([
             Animated.timing(anims.glowOpacity, {
-              toValue: 0.35,
-              duration: 500,
+              toValue: 0.3,
+              duration: 450,
               easing: Easing.in(Easing.ease),
               useNativeDriver: useNative,
             }),
             Animated.timing(anims.glowScale, {
-              toValue: 1.12,
-              duration: 500,
+              toValue: 1.05,
+              duration: 450,
               easing: Easing.in(Easing.ease),
               useNativeDriver: useNative,
             }),
             Animated.timing(anims.logoPulse, {
               toValue: 1.0,
-              duration: 500,
+              duration: 450,
               easing: Easing.in(Easing.ease),
               useNativeDriver: useNative,
             }),
@@ -211,35 +193,30 @@ export function AnimatedSplashScreen({
     }, 1000);
     timers.current.push(tPhase2);
 
-    // ==========================================
-    // PHASE 3 (2000 – 3000ms): Tagline & Progress Indicator
-    // ==========================================
+    // Phase 3 (2000 – 3000ms): Tagline & Progress Indicator
     const tPhase3 = setTimeout(() => {
       Animated.parallel([
-        // Tagline fade-in and slide-up
         Animated.timing(anims.taglineOpacity, {
           toValue: 1,
-          duration: 650,
+          duration: 600,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: useNative,
         }),
         Animated.timing(anims.taglineTranslateY, {
           toValue: 0,
+          duration: 600,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: useNative,
+        }),
+        Animated.timing(anims.footerOpacity, {
+          toValue: 1,
           duration: 650,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: useNative,
         }),
-        // Footer text fade-in
-        Animated.timing(anims.footerOpacity, {
-          toValue: 1,
-          duration: 700,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: useNative,
-        }),
-        // Sleek progress bar smooth fill from 0 to 1
         Animated.timing(anims.progressAnim, {
           toValue: 1,
-          duration: 1050,
+          duration: 1000,
           easing: Easing.inOut(Easing.cubic),
           useNativeDriver: useNative,
         }),
@@ -247,14 +224,10 @@ export function AnimatedSplashScreen({
     }, 2000);
     timers.current.push(tPhase3);
 
-    // ==========================================
-    // PHASE 4 (3000 – 3500ms): Exit Transition & Finish
-    // ==========================================
+    // Phase 4 (3000 – 3500ms): Exit Transition & Finish
     const tExit = setTimeout(() => {
-      if (isReadyRef.current) {
-        triggerExitRef.current();
-      }
-    }, Math.max(duration - 500, 3000));
+      triggerExitRef.current();
+    }, Math.max(duration - 400, 3000));
     timers.current.push(tExit);
 
     return () => {
@@ -263,23 +236,11 @@ export function AnimatedSplashScreen({
     };
   }, [anims, duration, useNative]);
 
-  // Handle case where readiness was waiting past 3000ms
-  useEffect(() => {
-    if (isReady && animationStarted.current && !onFinishCalled.current) {
-      const elapsedTimeout = setTimeout(() => {
-        triggerExitAndFinish();
-      }, 0);
-      return () => clearTimeout(elapsedTimeout);
-    }
-  }, [isReady, triggerExitAndFinish]);
-
-  // Interpolate progress translateX (-PROGRESS_BAR_WIDTH to 0) for pure native driver performance
   const progressTranslateX = anims.progressAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [-PROGRESS_BAR_WIDTH, 0],
   });
 
-  // Dynamic styling based on light/dark mode
   const bgSurface = isDark ? '#0B1120' : '#FFFFFF';
   const textTitlePrimary = isDark ? '#F8FAFC' : '#0F172A';
   const textMuted = isDark ? '#94A3B8' : '#64748B';
@@ -315,20 +276,23 @@ export function AnimatedSplashScreen({
 
       {/* Centered Brand Presentation */}
       <View style={styles.centerContent}>
-        {/* Logo Container with Scale and Pulse */}
+        {/* Outer Scale */}
         <Animated.View
           style={[
             styles.logoContainer,
             {
               opacity: anims.logoOpacity,
-              transform: [{ scale: Animated.multiply(anims.logoScale, anims.logoPulse) }],
+              transform: [{ scale: anims.logoScale }],
             },
           ]}>
-          <Image
-            source={require('../../assets/images/autocares-logo.png')}
-            style={{ width: logoWidth, height: logoHeight }}
-            resizeMode="contain"
-          />
+          {/* Inner Pulse */}
+          <Animated.View style={{ transform: [{ scale: anims.logoPulse }] }}>
+            <Image
+              source={require('../../assets/images/autocares-logo.png')}
+              style={{ width: logoWidth, height: logoHeight }}
+              resizeMode="contain"
+            />
+          </Animated.View>
         </Animated.View>
 
         {/* Application Name */}
@@ -416,11 +380,8 @@ const styles = StyleSheet.create({
   },
   glowHalo: {
     backgroundColor: 'rgba(56, 184, 232, 0.22)',
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 40,
-    elevation: 8,
+    // Elevation 0 to avoid HWUI RenderNode surface crashes on Android
+    elevation: 0,
   },
   centerContent: {
     alignItems: 'center',
@@ -443,7 +404,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   appNameAccent: {
-    color: theme.colors.primary, // Official Sky Blue #38B8E8
+    color: theme.colors.primary,
   },
   badgePill: {
     flexDirection: 'row',
@@ -460,7 +421,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: theme.colors.yellow, // Accent Yellow #FFD52A
+    backgroundColor: theme.colors.yellow,
     marginRight: 6,
   },
   badgeText: {
