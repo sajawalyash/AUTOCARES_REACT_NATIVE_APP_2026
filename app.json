@@ -15,7 +15,7 @@
         "NSBluetoothAlwaysUsageDescription": "AutoCares uses Bluetooth to find and connect to your BLE OBD-II adapter."
       },
       "config": {
-        "googleMapsApiKey": "AIzaSyAIi95dchgUrtLmuMCsElW1drwlTIcRGWU"
+        "googleMapsApiKey": "AIzaSyDav3RCKK3bCS-6M9TF4-5FlTGEE14POLo"
       }
       
     },
@@ -36,7 +36,7 @@
       "package": "com.autocares.mobile",
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyAIi95dchgUrtLmuMCsElW1drwlTIcRGWU"
+          "apiKey": "AIzaSyDav3RCKK3bCS-6M9TF4-5FlTGEE14POLo"
         }
       },
       "adaptiveIcon": {
