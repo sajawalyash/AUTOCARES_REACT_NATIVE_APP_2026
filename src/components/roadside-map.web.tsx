@@ -33,7 +33,7 @@ const GOOGLE_MAPS_KEY =
   process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
   process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
   process.env.GOOGLE_MAPS_API_KEY ||
-  'AIzaSyDav3RCKK3bCS-6M9TF4-5FlTGEE14POLo';
+  'AIzaSyAn-Efbwn-JnqIOJuYTEdWvm0YmbsCR5xI';
 
 let googleMapsScriptLoading = false;
 let googleMapsScriptLoaded = false;
