@@ -59,3 +59,23 @@ export async function watchCurrentCoords(
     return null;
   }
 }
+
+export async function getAddressFromCoords(
+  latitude: number,
+  longitude: number
+): Promise<string | null> {
+  try {
+    const results = await Location.reverseGeocodeAsync({ latitude, longitude });
+    if (results && results.length > 0) {
+      const first = results[0];
+      const parts = [
+        first.name || first.street,
+        first.district || first.subregion || first.city,
+      ].filter(Boolean);
+      return parts.join(', ') || first.city || first.region || null;
+    }
+  } catch {
+    // Reverse geocode fallback
+  }
+  return null;
+}

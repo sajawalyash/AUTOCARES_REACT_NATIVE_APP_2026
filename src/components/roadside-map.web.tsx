@@ -14,6 +14,19 @@ export function Marker(_props: MapMarkerProps) {
   return null;
 }
 
+export type MapCircleProps = {
+  center: { latitude: number; longitude: number };
+  radius: number;
+  strokeColor?: string;
+  strokeWidth?: number;
+  fillColor?: string;
+  zIndex?: number;
+};
+
+export function Circle(_props: MapCircleProps) {
+  return null;
+}
+
 export type WebMapViewRef = {
   animateToRegion: (region: Region, duration?: number) => void;
   fitToCoordinates: (
@@ -113,6 +126,7 @@ const RoadsideMap = forwardRef<WebMapViewRef, MapViewProps>(function RoadsideMap
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const circlesRef = useRef<any[]>([]);
   const [authFailed, setAuthFailed] = useState(false);
   const [scriptLoaded, setScriptLoaded] = useState(Boolean(typeof window !== 'undefined' && window.google?.maps));
 
@@ -186,9 +200,11 @@ const RoadsideMap = forwardRef<WebMapViewRef, MapViewProps>(function RoadsideMap
   useEffect(() => {
     if (!mapInstanceRef.current || !window.google?.maps) return;
 
-    // Clear old markers
+    // Clear old markers and circles
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
+    circlesRef.current.forEach((c) => c.setMap(null));
+    circlesRef.current = [];
 
     const extractedMarkers: {
       coordinate: { latitude: number; longitude: number };
@@ -198,16 +214,39 @@ const RoadsideMap = forwardRef<WebMapViewRef, MapViewProps>(function RoadsideMap
       onPress?: () => void;
     }[] = [];
 
+    const extractedCircles: MapCircleProps[] = [];
+
     React.Children.forEach(props.children, (child) => {
-      if (React.isValidElement(child) && child.props && (child.props as any).coordinate) {
+      if (React.isValidElement(child) && child.props) {
         const p = child.props as any;
-        extractedMarkers.push({
-          coordinate: p.coordinate,
-          title: p.title,
-          description: p.description,
-          pinColor: p.pinColor,
-          onPress: p.onPress,
+        if (p.coordinate) {
+          extractedMarkers.push({
+            coordinate: p.coordinate,
+            title: p.title,
+            description: p.description,
+            pinColor: p.pinColor,
+            onPress: p.onPress,
+          });
+        } else if (p.center && p.radius != null) {
+          extractedCircles.push(p as MapCircleProps);
+        }
+      }
+    });
+
+    extractedCircles.forEach((item) => {
+      if (item.center && typeof item.center.latitude === 'number' && typeof item.center.longitude === 'number') {
+        const circle = new window.google.maps.Circle({
+          strokeColor: item.strokeColor || '#38B8E8',
+          strokeOpacity: 0.8,
+          strokeWeight: item.strokeWidth || 2,
+          fillColor: item.fillColor || '#38B8E8',
+          fillOpacity: 0.15,
+          map: mapInstanceRef.current,
+          center: { lat: item.center.latitude, lng: item.center.longitude },
+          radius: item.radius,
+          zIndex: item.zIndex || 1,
         });
+        circlesRef.current.push(circle);
       }
     });
 

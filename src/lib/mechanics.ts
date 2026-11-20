@@ -7,21 +7,27 @@ export type NearbyMechanic = MechanicProfile & {
   eta_minutes: number;
 };
 
-export async function listApprovedMechanics() {
-  const { data, error } = await supabase
+export async function listApprovedMechanics(includeUnavailable = true) {
+  let query = supabase
     .from('mechanic_profiles')
     .select('*, profiles:user_id(full_name, phone, avatar_url)')
-    .eq('verification_status', 'approved')
-    .eq('is_available', true);
+    .eq('verification_status', 'approved');
+
+  if (!includeUnavailable) {
+    query = query.eq('is_available', true);
+  }
+
+  const { data, error } = await query;
   return { mechanics: (data ?? []) as MechanicProfile[], error: error?.message ?? null };
 }
 
 export async function getNearbyMechanics(
   lat?: number | null,
   lng?: number | null,
-  maxKm = 50
+  maxKm = 50,
+  includeUnavailable = true
 ): Promise<{ mechanics: NearbyMechanic[]; error: string | null }> {
-  const { mechanics, error } = await listApprovedMechanics();
+  const { mechanics, error } = await listApprovedMechanics(includeUnavailable);
   if (error) return { mechanics: [], error };
 
   const validMechanics = mechanics.filter(
@@ -52,7 +58,7 @@ export async function getNearbyMechanics(
         eta_minutes: etaMinutesFromDistance(distance_km),
       };
     })
-    .filter((m) => m.distance_km <= Math.max(maxKm, m.service_radius_km || 15))
+    .filter((m) => m.distance_km <= maxKm)
     .sort((a, b) => a.distance_km - b.distance_km);
 
   return { mechanics: nearby, error: null };

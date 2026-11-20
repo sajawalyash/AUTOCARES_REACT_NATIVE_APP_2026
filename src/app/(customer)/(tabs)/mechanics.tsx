@@ -1,41 +1,42 @@
-import { Avatar } from '../../../components/avatar';
 import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
+  Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from '../../../components/roadside-map';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import {
-  Field,
-  Label,
-  OutlineButton,
-  PrimaryButton,
-  Screen,
-  Subtitle,
-  Title,
-} from '../../../components/ui';
+import MapView, { Circle, PROVIDER_GOOGLE } from '../../../components/roadside-map';
+import { CustomerLocationMarker } from '../../../components/map/customer-marker';
+import { MechanicMarker } from '../../../components/map/mechanic-marker';
+import { RadiusSelector } from '../../../components/map/radius-selector';
+import { SearchThisAreaButton } from '../../../components/map/search-this-area-button';
+import { MapLegend } from '../../../components/map/map-legend';
+import { MechanicBottomSheet } from '../../../components/map/mechanic-bottom-sheet';
+import { FloatingSearchBar } from '../../../components/map/floating-search-bar';
+import { VehicleTypeFilters } from '../../../components/map/vehicle-type-filters';
+import { FloatingMapControls } from '../../../components/map/floating-map-controls';
+import { Field, Label, OutlineButton, PrimaryButton } from '../../../components/ui';
 import { theme } from '../../../constants/autocares-theme';
 import { MECHANIC_TYPE_FOR_VEHICLE } from '../../../lib/ai';
-import { distanceKm, etaMinutesFromDistance } from '../../../lib/geo';
-import { getCurrentCoords, watchCurrentCoords } from '../../../lib/location';
+import {
+  DEFAULT_SEARCH_RADIUS_METERS,
+  distanceKm,
+  distanceMeters,
+  etaMinutesFromDistance,
+  SEARCH_RADII_METERS,
+  type SearchRadiusMeters,
+} from '../../../lib/geo';
+import { getAddressFromCoords, getCurrentCoords, watchCurrentCoords } from '../../../lib/location';
 import { getNearbyMechanics, type NearbyMechanic } from '../../../lib/mechanics';
 import type { VehicleType } from '../../../lib/types';
-
-const vehicleFilters: (VehicleType | 'All')[] = ['All', 'Car', 'Van', 'Bike', 'Scooter'];
-
-function isVehicleType(value: string | undefined): value is VehicleType {
-  return value === 'Car' || value === 'Van' || value === 'Bike' || value === 'Scooter';
-}
 
 const isExpoGo =
   Constants.appOwnership === 'expo' ||
@@ -50,89 +51,137 @@ const DEFAULT_REGION = {
   longitudeDelta: 0.08,
 };
 
+function isVehicleType(value: string | undefined): value is VehicleType {
+  return value === 'Car' || value === 'Van' || value === 'Bike' || value === 'Scooter';
+}
+
 export default function MechanicsScreen() {
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ vehicleType?: string; problemType?: string }>();
   const mapRef = useRef<any>(null);
   const currentRegionRef = useRef(DEFAULT_REGION);
 
+  // Core state
   const [mechanics, setMechanics] = useState<NearbyMechanic[]>([]);
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [permissionDenied, setPermissionDenied] = useState(false);
-  const [manualLatitude, setManualLatitude] = useState('');
-  const [manualLongitude, setManualLongitude] = useState('');
-  const [manualMode, setManualMode] = useState(false);
+  const [searchCenter, setSearchCenter] = useState<{ latitude: number; longitude: number }>({
+    latitude: DEFAULT_REGION.latitude,
+    longitude: DEFAULT_REGION.longitude,
+  });
+  const [selectedRadius, setSelectedRadius] = useState<SearchRadiusMeters>(
+    DEFAULT_SEARCH_RADIUS_METERS
+  );
 
+  // Search & Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [locationAddress, setLocationAddress] = useState<string | null>(null);
   const [filterSelection, setFilterSelection] = useState<{
     routeVehicleType?: string;
     filter: VehicleType | 'All';
   } | null>(null);
 
-  const vehicleFilter = filterSelection && filterSelection.routeVehicleType === params.vehicleType
-    ? filterSelection.filter
-    : isVehicleType(params.vehicleType) ? params.vehicleType : 'All';
+  const vehicleFilter =
+    filterSelection && filterSelection.routeVehicleType === params.vehicleType
+      ? filterSelection.filter
+      : isVehicleType(params.vehicleType)
+      ? params.vehicleType
+      : 'All';
 
+  // Interaction & UI state
   const [selectedMechanicId, setSelectedMechanicId] = useState<string | null>(null);
+  const [showSearchThisArea, setShowSearchThisArea] = useState(false);
+  const [pendingMapCenter, setPendingMapCenter] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [searchingArea, setSearchingArea] = useState(false);
+  const [permissionDenied, setPermissionDenied] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  // Manual GPS entry modal state
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [manualLatitude, setManualLatitude] = useState('');
+  const [manualLongitude, setManualLongitude] = useState('');
 
-    let customerLocation: { latitude: number; longitude: number } | null = null;
+  // Fetch address label for search center
+  const updateAddressLabel = useCallback(async (lat: number, lng: number) => {
     try {
-      const loc = await getCurrentCoords();
-      if (loc.coords) {
-        customerLocation = loc.coords;
-        setCoords(loc.coords);
-        setPermissionDenied(false);
-        setManualLatitude(String(loc.coords.latitude));
-        setManualLongitude(String(loc.coords.longitude));
-      } else {
-        setPermissionDenied(true);
-        if (loc.error) {
-          setError(loc.error);
-        }
-      }
-    } catch (locErr) {
-      setPermissionDenied(true);
-      setError(locErr instanceof Error ? locErr.message : 'Could not retrieve device location.');
-    }
-
-    // Always fetch mechanics whether user location is available or not
-    try {
-      const { mechanics: nearby, error: mechanicError } = await getNearbyMechanics(
-        customerLocation?.latitude,
-        customerLocation?.longitude
-      );
-      if (mechanicError) {
-        setError((prev) => (prev ? `${prev} · ${mechanicError}` : mechanicError));
-      }
-      setMechanics(nearby);
-
-      // If customer location is available, center map
-      if (customerLocation) {
-        mapRef.current?.animateToRegion({
-          ...customerLocation,
-          latitudeDelta: 0.05,
-          longitudeDelta: 0.05,
-        });
-      } else if (nearby.length > 0 && nearby[0].latitude != null && nearby[0].longitude != null) {
-        // If customer location unavailable, center on first mechanic
-        mapRef.current?.animateToRegion({
-          latitude: Number(nearby[0].latitude),
-          longitude: Number(nearby[0].longitude),
-          latitudeDelta: 0.06,
-          longitudeDelta: 0.06,
-        });
-      }
-    } catch (searchError) {
-      setError(searchError instanceof Error ? searchError.message : 'Could not load nearby mechanics.');
-    } finally {
-      setLoading(false);
+      const address = await getAddressFromCoords(lat, lng);
+      setLocationAddress(address);
+    } catch {
+      setLocationAddress(null);
     }
   }, []);
 
+  // Primary loader for mechanics
+  const load = useCallback(
+    async (centerOverride?: { latitude: number; longitude: number }) => {
+      setLoading(true);
+      setError(null);
+
+      let center = centerOverride || searchCenter;
+      let customerLocation: { latitude: number; longitude: number } | null = coords;
+
+      if (!centerOverride && !coords) {
+        try {
+          const loc = await getCurrentCoords();
+          if (loc.coords) {
+            customerLocation = loc.coords;
+            center = loc.coords;
+            setCoords(loc.coords);
+            setSearchCenter(loc.coords);
+            setPermissionDenied(false);
+            setManualLatitude(String(loc.coords.latitude));
+            setManualLongitude(String(loc.coords.longitude));
+            void updateAddressLabel(loc.coords.latitude, loc.coords.longitude);
+          } else {
+            setPermissionDenied(true);
+            if (loc.error) {
+              setError(loc.error);
+            }
+          }
+        } catch (locErr) {
+          setPermissionDenied(true);
+          setError(locErr instanceof Error ? locErr.message : 'Could not retrieve device location.');
+        }
+      }
+
+      // Fetch mechanics from backend around center
+      try {
+        const radiusKm = selectedRadius / 1000;
+        const maxFetchKm = Math.max(radiusKm * 1.5, 30);
+        const { mechanics: nearby, error: mechanicError } = await getNearbyMechanics(
+          center.latitude,
+          center.longitude,
+          maxFetchKm,
+          true // include both available and unavailable
+        );
+
+        if (mechanicError) {
+          setError((prev) => (prev ? `${prev} · ${mechanicError}` : mechanicError));
+        }
+
+        setMechanics(nearby);
+
+        // Center map to initial view
+        if (customerLocation && !centerOverride) {
+          mapRef.current?.animateToRegion({
+            ...customerLocation,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          });
+        }
+      } catch (searchError) {
+        setError(searchError instanceof Error ? searchError.message : 'Could not load mechanics.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [coords, searchCenter, selectedRadius, updateAddressLabel]
+  );
+
+  // Screen focus effect: load data & watch GPS position
   useFocusEffect(
     useCallback(() => {
       let focused = true;
@@ -154,7 +203,7 @@ export default function MechanicsScreen() {
             sub.remove();
           }
         } catch {
-          // Live location watch failed or not permitted; static coords from load() will suffice
+          // GPS watch not available; static coords suffice
         }
       })();
 
@@ -165,77 +214,181 @@ export default function MechanicsScreen() {
     }, [load])
   );
 
-  const distanceSortedMechanics = useMemo(
-    () => mechanics
-      .map((mechanic) => {
-        if (coords && mechanic.latitude != null && mechanic.longitude != null) {
-          const distance = distanceKm(
-            coords.latitude,
-            coords.longitude,
-            Number(mechanic.latitude),
-            Number(mechanic.longitude)
-          );
-          return {
-            ...mechanic,
-            distance_km: distance,
-            eta_minutes: etaMinutesFromDistance(distance),
-          };
-        }
-        return mechanic;
+  // Recalculate distance from active search center and filter by radius
+  const radiusFilteredMechanics = useMemo(() => {
+    return mechanics
+      .filter((m) => {
+        if (m.latitude == null || m.longitude == null) return false;
+        const lat = Number(m.latitude);
+        const lng = Number(m.longitude);
+        if (isNaN(lat) || isNaN(lng)) return false;
+
+        // Actual geographical distance check in meters
+        const meters = distanceMeters(
+          searchCenter.latitude,
+          searchCenter.longitude,
+          lat,
+          lng
+        );
+        return meters <= selectedRadius;
       })
-      .sort((first, second) => first.distance_km - second.distance_km),
-    [coords, mechanics]
-  );
+      .map((m) => {
+        const km = distanceKm(
+          searchCenter.latitude,
+          searchCenter.longitude,
+          Number(m.latitude),
+          Number(m.longitude)
+        );
+        return {
+          ...m,
+          distance_km: km,
+          eta_minutes: etaMinutesFromDistance(km),
+        };
+      })
+      .sort((a, b) => a.distance_km - b.distance_km);
+  }, [mechanics, searchCenter, selectedRadius]);
 
-  const filteredMechanics = useMemo(
-    () => distanceSortedMechanics.filter((mechanic) => (
-      vehicleFilter === 'All' ||
-      mechanic.mechanic_type === MECHANIC_TYPE_FOR_VEHICLE[vehicleFilter]
-    )),
-    [distanceSortedMechanics, vehicleFilter]
-  );
+  // Apply Vehicle Filter and Search Query
+  const filteredMechanics = useMemo(() => {
+    return radiusFilteredMechanics.filter((mechanic) => {
+      // Vehicle type filter
+      if (vehicleFilter !== 'All') {
+        const targetType = MECHANIC_TYPE_FOR_VEHICLE[vehicleFilter];
+        const matchesType = mechanic.mechanic_type === targetType;
+        const matchesSpecialty = mechanic.specialties?.some((s) =>
+          s.toLowerCase().includes(vehicleFilter.toLowerCase())
+        );
+        if (!matchesType && !matchesSpecialty) {
+          return false;
+        }
+      }
 
-  const selectedMechanic = filteredMechanics.find(
-    (mechanic) => mechanic.user_id === selectedMechanicId
-  ) ?? null;
+      // Text search query filter
+      if (searchQuery.trim().length > 0) {
+        const q = searchQuery.toLowerCase().trim();
+        const name = (
+          mechanic.workshop_name ||
+          mechanic.profiles?.full_name ||
+          ''
+        ).toLowerCase();
+        const specialties = (mechanic.specialties || []).join(' ').toLowerCase();
+        const type = (mechanic.mechanic_type || '').toLowerCase();
+        return name.includes(q) || specialties.includes(q) || type.includes(q);
+      }
 
-  function selectMechanic(mechanic: NearbyMechanic) {
+      return true;
+    });
+  }, [radiusFilteredMechanics, vehicleFilter, searchQuery]);
+
+  // Active selected mechanic
+  const selectedMechanic = useMemo(() => {
+    if (!selectedMechanicId) return null;
+    return filteredMechanics.find((m) => m.user_id === selectedMechanicId) ?? null;
+  }, [filteredMechanics, selectedMechanicId]);
+
+  const effectiveSelectedMechanicId = selectedMechanic ? selectedMechanic.user_id : null;
+
+  // Marker / Card Selection Handler
+  const handleSelectMechanic = useCallback((mechanic: NearbyMechanic) => {
     setSelectedMechanicId(mechanic.user_id);
     if (mechanic.latitude != null && mechanic.longitude != null) {
       mapRef.current?.animateToRegion({
         latitude: Number(mechanic.latitude),
         longitude: Number(mechanic.longitude),
-        latitudeDelta: 0.025,
-        longitudeDelta: 0.025,
+        latitudeDelta: 0.02,
+        longitudeDelta: 0.02,
       });
     }
-  }
+  }, []);
 
-  function recenterCustomer() {
+  const handleClearSelection = useCallback(() => {
+    setSelectedMechanicId(null);
+  }, []);
+
+  // Map Region Change Handler
+  const handleRegionChangeComplete = useCallback(
+    (region: any) => {
+      if (!region) return;
+      currentRegionRef.current = region;
+
+      // Check distance between current map center and current search center
+      const movedMeters = distanceMeters(
+        searchCenter.latitude,
+        searchCenter.longitude,
+        region.latitude,
+        region.longitude
+      );
+
+      // If moved meaningfully (> 350 meters), show "Search This Area" button
+      if (movedMeters > 350) {
+        setPendingMapCenter({
+          latitude: region.latitude,
+          longitude: region.longitude,
+        });
+        setShowSearchThisArea(true);
+      } else {
+        setShowSearchThisArea(false);
+      }
+    },
+    [searchCenter]
+  );
+
+  // "Search This Area" Action
+  const handleSearchThisArea = useCallback(async () => {
+    if (!pendingMapCenter) return;
+    setSearchingArea(true);
+    setShowSearchThisArea(false);
+
+    setSearchCenter(pendingMapCenter);
+    void updateAddressLabel(pendingMapCenter.latitude, pendingMapCenter.longitude);
+
+    try {
+      const radiusKm = selectedRadius / 1000;
+      const { mechanics: nearby } = await getNearbyMechanics(
+        pendingMapCenter.latitude,
+        pendingMapCenter.longitude,
+        Math.max(radiusKm * 1.5, 30),
+        true
+      );
+      setMechanics(nearby);
+    } catch {
+      // Keep existing list if failed
+    } finally {
+      setSearchingArea(false);
+    }
+  }, [pendingMapCenter, selectedRadius, updateAddressLabel]);
+
+  // Recenter on Customer GPS Location
+  const handleRecenterCustomer = useCallback(() => {
+    setShowSearchThisArea(false);
     if (coords) {
+      setSearchCenter(coords);
+      void updateAddressLabel(coords.latitude, coords.longitude);
       mapRef.current?.animateToRegion({
         latitude: coords.latitude,
         longitude: coords.longitude,
         latitudeDelta: 0.04,
         longitudeDelta: 0.04,
       });
+      void load(coords);
     } else {
       void load();
     }
-  }
+  }, [coords, load, updateAddressLabel]);
 
-  function zoomIn() {
+  // Zoom In / Out
+  const handleZoomIn = useCallback(() => {
     const cur = currentRegionRef.current;
     const newRegion = {
       ...cur,
-      latitudeDelta: Math.max(0.005, cur.latitudeDelta / 2),
-      longitudeDelta: Math.max(0.005, cur.longitudeDelta / 2),
+      latitudeDelta: Math.max(0.003, cur.latitudeDelta / 2),
+      longitudeDelta: Math.max(0.003, cur.longitudeDelta / 2),
     };
     currentRegionRef.current = newRegion;
     mapRef.current?.animateToRegion(newRegion);
-  }
+  }, []);
 
-  function zoomOut() {
+  const handleZoomOut = useCallback(() => {
     const cur = currentRegionRef.current;
     const newRegion = {
       ...cur,
@@ -244,9 +397,10 @@ export default function MechanicsScreen() {
     };
     currentRegionRef.current = newRegion;
     mapRef.current?.animateToRegion(newRegion);
-  }
+  }, []);
 
-  function fitAllMarkers() {
+  // Fit all markers
+  const handleFitMarkers = useCallback(() => {
     const points: { latitude: number; longitude: number }[] = [];
     if (coords) points.push(coords);
     filteredMechanics.forEach((m) => {
@@ -256,7 +410,7 @@ export default function MechanicsScreen() {
     });
 
     if (points.length === 0) {
-      recenterCustomer();
+      handleRecenterCustomer();
       return;
     }
 
@@ -264,8 +418,8 @@ export default function MechanicsScreen() {
       mapRef.current?.animateToRegion({
         latitude: points[0].latitude,
         longitude: points[0].longitude,
-        latitudeDelta: 0.03,
-        longitudeDelta: 0.03,
+        latitudeDelta: 0.025,
+        longitudeDelta: 0.025,
       });
       return;
     }
@@ -284,8 +438,8 @@ export default function MechanicsScreen() {
 
     const midLat = (minLat + maxLat) / 2;
     const midLng = (minLng + maxLng) / 2;
-    const latDelta = Math.max(0.02, (maxLat - minLat) * 1.4);
-    const lngDelta = Math.max(0.02, (maxLng - minLng) * 1.4);
+    const latDelta = Math.max(0.015, (maxLat - minLat) * 1.35);
+    const lngDelta = Math.max(0.015, (maxLng - minLng) * 1.35);
 
     const fitRegion = {
       latitude: midLat,
@@ -295,768 +449,415 @@ export default function MechanicsScreen() {
     };
     currentRegionRef.current = fitRegion;
     mapRef.current?.animateToRegion(fitRegion);
-  }
+  }, [coords, filteredMechanics, handleRecenterCustomer]);
 
-  async function searchManualLocation() {
+  // Radius change handler
+  const handleSelectRadius = useCallback(
+    (radius: SearchRadiusMeters) => {
+      setSelectedRadius(radius);
+      // Zoom map smoothly to accommodate radius
+      const delta = (radius / 1000) * 0.018;
+      mapRef.current?.animateToRegion({
+        latitude: searchCenter.latitude,
+        longitude: searchCenter.longitude,
+        latitudeDelta: Math.max(0.02, delta),
+        longitudeDelta: Math.max(0.02, delta),
+      });
+    },
+    [searchCenter]
+  );
+
+  // Expand radius automatically when empty
+  const handleExpandRadius = useCallback(() => {
+    const currentIndex = SEARCH_RADII_METERS.indexOf(selectedRadius);
+    const nextRadius =
+      currentIndex < SEARCH_RADII_METERS.length - 1
+        ? SEARCH_RADII_METERS[currentIndex + 1]
+        : SEARCH_RADII_METERS[SEARCH_RADII_METERS.length - 1];
+    handleSelectRadius(nextRadius);
+  }, [selectedRadius, handleSelectRadius]);
+
+  // Request Roadside Assistance
+  const handleRequestAssistance = useCallback(
+    (mechanic: NearbyMechanic) => {
+      router.push({
+        pathname: '/(customer)/request',
+        params: {
+          mechanicHint: mechanic.user_id,
+          eta: String(mechanic.eta_minutes),
+          problemType: params.problemType,
+          vehicleType: vehicleFilter === 'All' ? params.vehicleType : vehicleFilter,
+        },
+      });
+    },
+    [params.problemType, params.vehicleType, vehicleFilter]
+  );
+
+  // Manual Coordinates Search
+  const handleSearchManualCoords = useCallback(async () => {
     const latitude = Number(manualLatitude);
     const longitude = Number(manualLongitude);
     if (
       !Number.isFinite(latitude) ||
       !Number.isFinite(longitude) ||
-      latitude < -90 || latitude > 90 ||
-      longitude < -180 || longitude > 180
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
     ) {
       setError('Enter valid latitude (-90 to 90) and longitude (-180 to 180).');
       return;
     }
-    setLoading(true);
-    setError(null);
-    try {
-      const { mechanics: nearby, error: searchError } = await getNearbyMechanics(latitude, longitude);
-      setCoords({ latitude, longitude });
-      setPermissionDenied(false);
-      setMechanics(nearby);
-      setError(searchError);
-      mapRef.current?.animateToRegion({
-        latitude,
-        longitude,
-        latitudeDelta: 0.04,
-        longitudeDelta: 0.04,
-      });
-    } catch (searchError) {
-      setError(searchError instanceof Error ? searchError.message : 'Could not load nearby mechanics.');
-    } finally {
-      setLoading(false);
-    }
-  }
 
-  function requestAssistance(mechanic: NearbyMechanic) {
-    router.push({
-      pathname: '/(customer)/request',
-      params: {
-        mechanicHint: mechanic.user_id,
-        eta: String(mechanic.eta_minutes),
-        problemType: params.problemType,
-        vehicleType: vehicleFilter === 'All' ? params.vehicleType : vehicleFilter,
-      },
+    setShowManualModal(false);
+    const newCenter = { latitude, longitude };
+    setSearchCenter(newCenter);
+    setCoords(newCenter);
+    setPermissionDenied(false);
+    void updateAddressLabel(latitude, longitude);
+
+    mapRef.current?.animateToRegion({
+      latitude,
+      longitude,
+      latitudeDelta: 0.04,
+      longitudeDelta: 0.04,
     });
-  }
+    void load(newCenter);
+  }, [manualLatitude, manualLongitude, load, updateAddressLabel]);
 
   const initialRegion = {
-    latitude: coords?.latitude ?? (mechanics[0]?.latitude ?? DEFAULT_REGION.latitude),
-    longitude: coords?.longitude ?? (mechanics[0]?.longitude ?? DEFAULT_REGION.longitude),
+    latitude: coords?.latitude ?? searchCenter.latitude,
+    longitude: coords?.longitude ?? searchCenter.longitude,
     latitudeDelta: DEFAULT_REGION.latitudeDelta,
     longitudeDelta: DEFAULT_REGION.longitudeDelta,
   };
 
   return (
-    <Screen style={{ paddingHorizontal: 0 }} safeBottom={false}>
-      {/* Top Header */}
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={{ flex: 1 }}>
-            <Title>Available Mechanics</Title>
-            <Subtitle>
-              Live Google Maps view with real-time mechanic availability.
-            </Subtitle>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Refresh mechanics"
-            onPress={() => void load()}
-            style={styles.headerRefreshBtn}>
-            <Ionicons name="refresh" size={18} color={theme.colors.primaryDark} />
-          </Pressable>
-        </View>
+    <View style={styles.rootContainer}>
+      {/* FULL-SCREEN GOOGLE MAP */}
+      <MapView
+        ref={mapRef}
+        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : isExpoGo ? undefined : PROVIDER_GOOGLE}
+        style={styles.fullMap}
+        initialRegion={initialRegion}
+        onRegionChangeComplete={handleRegionChangeComplete}>
+        {/* Search Radius Circle Overlay */}
+        <Circle
+          center={searchCenter}
+          radius={selectedRadius}
+          strokeColor="#38B8E8"
+          strokeWidth={2}
+          fillColor="rgba(56, 184, 232, 0.15)"
+          zIndex={10}
+        />
 
+        {/* Customer Location Pointer (Blue GPS Dot) */}
+        {coords && <CustomerLocationMarker coordinate={coords} />}
+
+        {/* Custom Mechanic Markers (Blue Teardrop Wrench Pins) */}
+        {filteredMechanics.map((mechanic) => (
+          <MechanicMarker
+            key={mechanic.user_id}
+            mechanic={mechanic}
+            isSelected={effectiveSelectedMechanicId === mechanic.user_id}
+            onPress={handleSelectMechanic}
+          />
+        ))}
+      </MapView>
+
+      {/* TOP FLOATING OVERLAY: Search Bar & Vehicle Filters */}
+      <View style={[styles.topFloatingSection, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
+        {/* Floating Search Bar */}
+        <FloatingSearchBar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          locationLabel={locationAddress}
+          onRecenterCustomer={handleRecenterCustomer}
+          hasGpsLocation={Boolean(coords)}
+        />
+
+        {/* Vehicle Type Filter Chips */}
+        <VehicleTypeFilters
+          selectedFilter={vehicleFilter}
+          onSelectFilter={(filter) =>
+            setFilterSelection({
+              routeVehicleType: params.vehicleType,
+              filter,
+            })
+          }
+        />
+
+        {/* Error or Permission Alert Banner */}
         {error ? (
-          <View style={styles.errorBanner}>
-            <Ionicons name="alert-circle-outline" size={16} color={theme.colors.danger} />
-            <Text style={styles.errorBannerText}>{error}</Text>
-          </View>
+          <Pressable onPress={() => setError(null)} style={styles.errorBanner}>
+            <Ionicons name="alert-circle-outline" size={15} color={theme.colors.danger} />
+            <Text style={styles.errorBannerText} numberOfLines={2}>
+              {error}
+            </Text>
+            <Ionicons name="close" size={14} color={theme.colors.danger} />
+          </Pressable>
         ) : null}
 
         {permissionDenied && !coords ? (
-          <View style={styles.permissionBanner}>
-            <Ionicons name="location-outline" size={16} color={theme.colors.orangeDark} />
-            <Text style={styles.permissionText}>
-              Location permission denied. Map is showing default view. Tap GPS button to retry or enter coordinates below.
+          <Pressable onPress={() => setShowManualModal(true)} style={styles.permissionBanner}>
+            <Ionicons name="location-outline" size={15} color={theme.colors.orangeDark} />
+            <Text style={styles.permissionBannerText} numberOfLines={2}>
+              GPS permission unavailable. Tap to enter custom coordinates or pan map.
             </Text>
-          </View>
+            <Ionicons name="chevron-forward" size={14} color={theme.colors.orangeDark} />
+          </Pressable>
         ) : null}
       </View>
 
-      {/* Vehicle Type Filter Chips */}
-      <View style={styles.filterSection}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-          {vehicleFilters.map((filter) => {
-            const isSelected = vehicleFilter === filter;
-            return (
-              <Pressable
-                key={filter}
-                accessibilityRole="button"
-                accessibilityState={{ selected: isSelected }}
-                onPress={() => setFilterSelection({
-                  routeVehicleType: params.vehicleType,
-                  filter,
-                })}
-                style={[styles.filterChip, isSelected && styles.filterChipSelected]}>
-                <Text style={[styles.filterText, isSelected && styles.filterTextSelected]}>
-                  {filter === 'All' ? 'All Vehicles' : filter}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </View>
+      {/* SEARCH THIS AREA BUTTON */}
+      <SearchThisAreaButton
+        visible={showSearchThisArea}
+        loading={searchingArea}
+        onPress={handleSearchThisArea}
+      />
 
-      {/* Google Maps View - Always rendered on screen */}
-      <View style={styles.mapContainer}>
-        <MapView
-          ref={mapRef}
-          provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : (isExpoGo ? undefined : PROVIDER_GOOGLE)}
-          style={styles.map}
-          initialRegion={initialRegion}
-          onRegionChangeComplete={(r: any) => {
-            if (r) currentRegionRef.current = r;
-          }}>
-          {/* Customer Location Marker */}
-          {coords && (
-            <Marker
-              coordinate={coords}
-              title="Your Location"
-              description="Live customer position"
-              pinColor={theme.colors.blue}
-            />
-          )}
-
-          {/* Mechanic Markers */}
-          {filteredMechanics.map((mechanic) =>
-            mechanic.latitude != null && mechanic.longitude != null ? (
-              <Marker
-                key={mechanic.user_id}
-                coordinate={{ latitude: Number(mechanic.latitude), longitude: Number(mechanic.longitude) }}
-                title={mechanic.workshop_name || mechanic.profiles?.full_name || 'Mechanic'}
-                description={
-                  mechanic.distance_km > 0
-                    ? `${mechanic.distance_km.toFixed(1)} km away · ETA ~${mechanic.eta_minutes} min`
-                    : `${mechanic.mechanic_type ?? 'Mechanic'} · Available`
-                }
-                pinColor={selectedMechanicId === mechanic.user_id ? theme.colors.yellow : theme.colors.orange}
-                onPress={() => selectMechanic(mechanic)}
-              />
-            ) : null
-          )}
-        </MapView>
-
-        {/* Floating Map Controls */}
-        <View style={styles.mapFloatingControls}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Recenter on my location"
-            style={[styles.mapControlBtn, coords && styles.mapControlBtnActive]}
-            onPress={recenterCustomer}>
-            <Ionicons
-              name={coords ? 'locate' : 'locate-outline'}
-              size={20}
-              color={coords ? theme.colors.primary : theme.colors.textSecondary}
-            />
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Zoom in"
-            style={styles.mapControlBtn}
-            onPress={zoomIn}>
-            <Ionicons name="add" size={20} color={theme.colors.text} />
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Zoom out"
-            style={styles.mapControlBtn}
-            onPress={zoomOut}>
-            <Ionicons name="remove" size={20} color={theme.colors.text} />
-          </Pressable>
-
-          {filteredMechanics.length > 0 && (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Fit all markers"
-              style={styles.mapControlBtn}
-              onPress={fitAllMarkers}>
-              <Ionicons name="scan-outline" size={18} color={theme.colors.primaryDark} />
-            </Pressable>
-          )}
-        </View>
-
-        {/* Loading overlay badge */}
-        {loading && (
-          <View style={styles.mapLoadingBadge}>
-            <ActivityIndicator size="small" color={theme.colors.primary} />
-            <Text style={styles.mapLoadingText}>Updating mechanics…</Text>
-          </View>
-        )}
-
-        {/* Map Legend */}
-        <View style={styles.mapLegend}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: theme.colors.blue }]} />
-            <Text style={styles.legendText}>You</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: theme.colors.orange }]} />
-            <Text style={styles.legendText}>Mechanic</Text>
-          </View>
-          {selectedMechanic && (
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: theme.colors.yellow }]} />
-              <Text style={styles.legendText}>Selected</Text>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {/* Manual GPS fallback toggle */}
-      <View style={styles.manualToggleSection}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => setManualMode(!manualMode)}
-          style={styles.manualToggleBtn}>
-          <Ionicons
-            name={manualMode ? 'chevron-up-outline' : 'options-outline'}
-            size={14}
-            color={theme.colors.muted}
-          />
-          <Text style={styles.manualToggleText}>
-            {manualMode ? 'Hide coordinate search' : 'Search by custom coordinates'}
-          </Text>
-        </Pressable>
-      </View>
-
-      {manualMode && (
-        <View style={styles.manualSection}>
-          <Label>Search location manually (coordinates)</Label>
-          <View style={styles.manualRow}>
-            <Field
-              value={manualLatitude}
-              onChangeText={setManualLatitude}
-              placeholder="Latitude (e.g. 24.8607)"
-              keyboardType="decimal-pad"
-              style={styles.manualField}
-            />
-            <Field
-              value={manualLongitude}
-              onChangeText={setManualLongitude}
-              placeholder="Longitude (e.g. 67.0011)"
-              keyboardType="decimal-pad"
-              style={styles.manualField}
-            />
-          </View>
-          <PrimaryButton label="Search Coordinates" onPress={() => void searchManualLocation()} />
-        </View>
-      )}
-
-      {/* Selected Mechanic Spotlight Card */}
-      {selectedMechanic && (
-        <View style={styles.detailCard}>
-          <View style={styles.mechanicHeaderWithAvatar}>
-            <Avatar
-              url={selectedMechanic.profiles?.avatar_url}
-              name={selectedMechanic.workshop_name || selectedMechanic.profiles?.full_name || 'Mechanic'}
-              size={52}
-            />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <View style={styles.cardTopRow}>
-                <Text style={styles.name} numberOfLines={1}>
-                  {selectedMechanic.workshop_name || selectedMechanic.profiles?.full_name || 'Mechanic'}
-                </Text>
-                <View style={styles.ratingBadge}>
-                  <Text style={styles.ratingText}>★ {Number(selectedMechanic.average_rating || 0).toFixed(1)}</Text>
-                </View>
-              </View>
-              <Text style={styles.meta} numberOfLines={1}>
-                {selectedMechanic.mechanic_type ?? 'Mechanic'}
-                {selectedMechanic.distance_km > 0
-                  ? ` · ${selectedMechanic.distance_km.toFixed(1)} km away · ETA ~${selectedMechanic.eta_minutes} min`
-                  : ' · Available'}
-              </Text>
-            </View>
-          </View>
-          <Text style={styles.meta}>
-            {selectedMechanic.mechanic_type ?? 'Mechanic'}
-            {selectedMechanic.distance_km > 0
-              ? ` · ${selectedMechanic.distance_km.toFixed(1)} km away · ETA ~${selectedMechanic.eta_minutes} min`
-              : ' · Available'}
-          </Text>
-          <Text style={styles.metaSub}>
-            Specialties: {selectedMechanic.specialties?.join(', ') || 'General roadside repairs'}
-          </Text>
-          <View style={styles.availableRow}>
-            <View style={styles.greenDot} />
-            <Text style={styles.availability}>Verified & Available Now</Text>
-          </View>
-          <PrimaryButton
-            variant="orange"
-            label="Request This Mechanic"
-            onPress={() => requestAssistance(selectedMechanic)}
-          />
-        </View>
-      )}
-
-      {/* Mechanics List or Empty State */}
-      {filteredMechanics.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <View style={styles.emptyIconCircle}>
-            <Ionicons name="location-outline" size={32} color={theme.colors.muted} />
-          </View>
-          <Text style={styles.emptyTitle}>No mechanics available nearby</Text>
-          <Text style={styles.emptySubtitle}>
-            {vehicleFilter === 'All'
-              ? 'No mechanics are currently active in this area. Please try again later.'
-              : `No available ${vehicleFilter.toLowerCase()} mechanics found nearby. Try selecting "All Vehicles" or search again.`}
-          </Text>
-          <View style={styles.emptyActions}>
-            <OutlineButton label="Refresh Nearby Mechanics" onPress={() => void load()} />
-          </View>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredMechanics}
-          keyExtractor={(item) => item.user_id}
-          contentContainerStyle={styles.list}
-          renderItem={({ item }) => {
-            const isSelected = item.user_id === selectedMechanicId;
-            return (
-              <View style={[styles.card, isSelected && styles.cardSelected]}>
-                <View style={styles.mechanicHeaderWithAvatar}>
-                  <Avatar
-                    url={item.profiles?.avatar_url}
-                    name={item.workshop_name || item.profiles?.full_name || 'Mechanic'}
-                    size={46}
-                  />
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <View style={styles.cardTopRow}>
-                      <Text style={styles.name} numberOfLines={1}>
-                        {item.workshop_name || item.profiles?.full_name || 'Mechanic'}
-                      </Text>
-                      <View style={styles.ratingBadge}>
-                        <Text style={styles.ratingText}>★ {Number(item.average_rating || 0).toFixed(1)}</Text>
-                      </View>
-                    </View>
-                    <Text style={styles.meta} numberOfLines={1}>
-                      {item.distance_km > 0
-                        ? `${item.distance_km.toFixed(1)} km away · ETA ~${item.eta_minutes} min`
-                        : 'Location available'}
-                      {item.rating_count ? ` (${item.rating_count} reviews)` : ''}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={styles.metaSub}>
-                  {item.mechanic_type ?? 'Mechanic'} · {item.specialties?.join(', ') || 'General repairs'}
-                </Text>
-
-                <View style={styles.actionButtonsRow}>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => selectMechanic(item)}
-                    style={[styles.showMapButton, isSelected && styles.showMapButtonSelected]}>
-                    <Ionicons
-                      name="map-outline"
-                      size={14}
-                      color={isSelected ? theme.colors.primaryDark : theme.colors.textSecondary}
-                    />
-                    <Text style={[styles.showMapText, isSelected && styles.showMapTextSelected]}>
-                      View on Map
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => requestAssistance(item)}
-                    style={styles.requestButton}>
-                    <Text style={styles.requestButtonText}>Request</Text>
-                  </Pressable>
-                </View>
-              </View>
-            );
-          }}
+      {/* RIGHT-SIDE FLOATING CONTROLS: Recenter, Zoom, Markers */}
+      <View style={styles.rightControlsContainer} pointerEvents="box-none">
+        <FloatingMapControls
+          hasCoords={Boolean(coords)}
+          onRecenter={handleRecenterCustomer}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onFitMarkers={handleFitMarkers}
+          hasMarkers={filteredMechanics.length > 0}
+          onToggleManualCoords={() => setShowManualModal(true)}
+          manualMode={showManualModal}
         />
+      </View>
+
+      {/* FLOATING RADIUS SELECTOR (Compact floating card above bottom sheet) */}
+      <View style={styles.radiusSelectorContainer} pointerEvents="box-none">
+        <RadiusSelector
+          selectedRadius={selectedRadius}
+          onSelectRadius={handleSelectRadius}
+        />
+      </View>
+
+      {/* MAP LEGEND (Bottom Left above sheet) */}
+      <View style={styles.legendContainer} pointerEvents="box-none">
+        <MapLegend hasSelected={Boolean(selectedMechanic)} />
+      </View>
+
+      {/* LOADING OVERLAY BADGE */}
+      {loading && (
+        <View style={styles.loadingBadge}>
+          <ActivityIndicator size="small" color="#38B8E8" />
+          <Text style={styles.loadingBadgeText}>Updating mechanics…</Text>
+        </View>
       )}
-    </Screen>
+
+      {/* EXPANDABLE BOTTOM SHEET: List, Preview Card & Request Integration */}
+      <MechanicBottomSheet
+        mechanics={filteredMechanics}
+        selectedMechanic={selectedMechanic}
+        onSelectMechanic={handleSelectMechanic}
+        onClearSelection={handleClearSelection}
+        onRequestAssistance={handleRequestAssistance}
+        onExpandRadius={handleExpandRadius}
+        selectedRadius={selectedRadius}
+      />
+
+      {/* MANUAL COORDINATES MODAL */}
+      <Modal
+        visible={showManualModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowManualModal(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Search Custom Coordinates</Text>
+              <Pressable
+                onPress={() => setShowManualModal(false)}
+                hitSlop={8}
+                style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={20} color="#64748B" />
+              </Pressable>
+            </View>
+
+            <Label>Latitude & Longitude</Label>
+            <View style={styles.modalInputRow}>
+              <Field
+                value={manualLatitude}
+                onChangeText={setManualLatitude}
+                placeholder="Latitude (e.g. 24.8607)"
+                keyboardType="decimal-pad"
+                style={{ flex: 1 }}
+              />
+              <Field
+                value={manualLongitude}
+                onChangeText={setManualLongitude}
+                placeholder="Longitude (e.g. 67.0011)"
+                keyboardType="decimal-pad"
+                style={{ flex: 1 }}
+              />
+            </View>
+
+            <View style={styles.modalActions}>
+              <View style={{ flex: 1 }}>
+                <OutlineButton
+                  label="Cancel"
+                  onPress={() => setShowManualModal(false)}
+                />
+              </View>
+              <View style={{ flex: 1.5 }}>
+                <PrimaryButton
+                  label="Search Coordinates"
+                  onPress={() => void handleSearchManualCoords()}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
+  rootContainer: {
+    flex: 1,
+    backgroundColor: '#F5F8FA',
+    position: 'relative',
+  },
+  fullMap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  topFloatingSection: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  headerRefreshBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: theme.colors.primaryLight,
-    borderWidth: 1,
-    borderColor: theme.colors.primarySubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
+    zIndex: 80,
+    gap: 6,
   },
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: theme.colors.dangerLight,
-    borderColor: theme.colors.danger,
+    backgroundColor: '#FEE2E2',
     borderWidth: 1,
-    borderRadius: theme.radius.sm,
-    paddingHorizontal: 10,
+    borderColor: '#DC2626',
+    borderRadius: 12,
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    marginTop: 6,
+    elevation: 3,
   },
   errorBannerText: {
-    color: theme.colors.danger,
-    fontSize: 12,
-    fontWeight: '600',
+    color: '#DC2626',
+    fontSize: 11,
+    fontWeight: '700',
     flex: 1,
   },
   permissionBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: theme.colors.warningLight,
-    borderColor: theme.colors.warning,
+    backgroundColor: '#FFF5E6',
     borderWidth: 1,
-    borderRadius: theme.radius.sm,
-    paddingHorizontal: 10,
+    borderColor: '#FF9800',
+    borderRadius: 12,
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    marginTop: 6,
+    elevation: 3,
   },
-  permissionText: {
-    color: theme.colors.orangeText,
+  permissionBannerText: {
+    color: '#A35200',
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     flex: 1,
   },
-  filterSection: {
-    paddingHorizontal: 16,
-    marginVertical: 6,
-  },
-  filters: {
-    gap: 8,
-    paddingBottom: 2,
-  },
-  filterChip: {
-    borderWidth: 1.5,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.pill,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-  },
-  filterChipSelected: {
-    backgroundColor: theme.colors.primaryLight,
-    borderColor: theme.colors.primary,
-  },
-  filterText: {
-    color: theme.colors.textSecondary,
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  filterTextSelected: {
-    color: theme.colors.primaryDark,
-  },
-  mapContainer: {
-    marginHorizontal: 16,
-    borderRadius: theme.radius.lg,
-    overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: theme.colors.border,
-    backgroundColor: '#E2E8F0',
-    position: 'relative',
-    height: 280,
-    ...theme.shadows.cardElevated,
-  },
-  map: {
-    width: '100%',
-    height: '100%',
-  },
-  mapFloatingControls: {
+  rightControlsContainer: {
     position: 'absolute',
-    right: 12,
-    top: 12,
-    gap: 6,
+    right: 16,
+    top: 210,
+    zIndex: 70,
   },
-  mapControlBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+  radiusSelectorContainer: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 236, // positioned comfortably right above the collapsed bottom sheet
+    zIndex: 75,
+  },
+  legendContainer: {
+    position: 'absolute',
+    left: 16,
+    bottom: 304,
+    zIndex: 70,
+  },
+  loadingBadge: {
+    position: 'absolute',
+    top: 175,
+    alignSelf: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.96)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderColor: '#38B8E8',
+    elevation: 4,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    zIndex: 85,
+  },
+  loadingBadgeText: {
+    color: '#0F172A',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    ...theme.shadows.card,
-  },
-  mapControlBtnActive: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primaryLight,
-  },
-  mapLoadingBadge: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: theme.radius.pill,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    ...theme.shadows.card,
-  },
-  mapLoadingText: {
-    color: theme.colors.text,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  mapLegend: {
-    position: 'absolute',
-    bottom: 8,
-    left: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: theme.radius.pill,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  legendText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: theme.colors.textSecondary,
-  },
-  manualToggleSection: {
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-  },
-  manualToggleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  manualToggleText: {
-    color: theme.colors.muted,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  manualSection: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    backgroundColor: theme.colors.surface,
-    padding: 12,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    gap: 8,
-  },
-  manualRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  manualField: {
-    flex: 1,
-  },
-  detailCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1.5,
-    borderColor: theme.colors.primary,
-    padding: 14,
-    marginHorizontal: 16,
-    marginVertical: 8,
-    ...theme.shadows.cardElevated,
-  },
-  mechanicHeaderWithAvatar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  cardTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  name: {
-    color: theme.colors.text,
-    fontWeight: '800',
-    fontSize: 15,
-    flex: 1,
-  },
-  ratingBadge: {
-    backgroundColor: theme.colors.yellowLight,
-    borderColor: theme.colors.yellow,
-    borderWidth: 1,
-    borderRadius: theme.radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  ratingText: {
-    color: theme.colors.yellowText,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  meta: {
-    color: theme.colors.primaryDark,
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  metaSub: {
-    color: theme.colors.muted,
-    fontSize: 12,
-    marginTop: 3,
-  },
-  availableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
-    marginBottom: 10,
-  },
-  greenDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: theme.colors.success,
-  },
-  availability: {
-    color: theme.colors.success,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  emptyContainer: {
-    marginHorizontal: 16,
-    marginTop: 12,
     padding: 20,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...theme.shadows.card,
   },
-  emptyIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: theme.colors.surfaceSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
+  modalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    gap: 12,
   },
-  emptyTitle: {
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modalTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: theme.colors.text,
-    marginBottom: 6,
-    textAlign: 'center',
+    color: '#0F172A',
   },
-  emptySubtitle: {
-    fontSize: 13,
-    color: theme.colors.muted,
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 14,
-    maxWidth: 280,
+  modalCloseBtn: {
+    padding: 4,
   },
-  emptyActions: {
-    width: '100%',
-  },
-  list: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 24,
-  },
-  card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    padding: 14,
-    marginBottom: 10,
-    ...theme.shadows.card,
-  },
-  cardSelected: {
-    borderColor: theme.colors.primary,
-    borderWidth: 1.5,
-    backgroundColor: theme.colors.primaryLight,
-  },
-  actionButtonsRow: {
+  modalInputRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 10,
-    alignItems: 'center',
+    gap: 10,
   },
-  showMapButton: {
+  modalActions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-  },
-  showMapButtonSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primaryLight,
-  },
-  showMapText: {
-    color: theme.colors.textSecondary,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  showMapTextSelected: {
-    color: theme.colors.primaryDark,
-  },
-  requestButton: {
-    flex: 1,
-    backgroundColor: theme.colors.orange,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: theme.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...theme.shadows.orangeButton,
-  },
-  requestButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 13,
+    gap: 10,
+    marginTop: 8,
   },
 });
