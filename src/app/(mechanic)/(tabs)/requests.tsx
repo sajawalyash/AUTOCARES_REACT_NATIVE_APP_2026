@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import AdminSupportCard from '../../../components/admin-support-card';
@@ -59,10 +59,16 @@ export default function IncomingRequests() {
     }, [load])
   );
 
+  const loadRef = useRef(load);
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
+
   useEffect(() => {
     if (!user) return;
+    const channelName = `mechanic-requests-live:${user.id}_${Date.now()}`;
     const channel = supabase
-      .channel(`mechanic-requests-live:${user.id}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -71,7 +77,7 @@ export default function IncomingRequests() {
           table: 'service_requests',
         },
         () => {
-          load();
+          loadRef.current();
         }
       )
       .subscribe();
@@ -79,7 +85,7 @@ export default function IncomingRequests() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [load, user]);
+  }, [user]);
 
   async function onAccept(item: ServiceRequest) {
     if (!user) return;

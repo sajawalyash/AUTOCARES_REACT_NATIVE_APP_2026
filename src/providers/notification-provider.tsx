@@ -143,8 +143,10 @@ export function NotificationProvider({ children }: PropsWithChildren) {
   }, [user]);
 
   // Register push token for authenticated user and configure Android channels
+  const registeredUserRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!user) return;
+    if (!user || registeredUserRef.current === user.id) return;
+    registeredUserRef.current = user.id;
     setupMechanicNotificationChannel();
     registerForPushNotificationsAsync(user.id);
   }, [user]);
@@ -213,7 +215,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
     // Set up Supabase Realtime Channel
     let channel: any;
     try {
-      const channelName = `realtime:notifications:${user.id}`;
+      const channelName = `realtime:notifications:${user.id}_${Date.now()}`;
       channel = supabase
         .channel(channelName)
         .on(

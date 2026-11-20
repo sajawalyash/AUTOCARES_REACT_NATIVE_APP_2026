@@ -1,7 +1,7 @@
 import { Avatar } from '../../../components/avatar';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { Link, router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -138,10 +138,16 @@ export default function CustomerHome() {
     }, [load])
   );
 
+  const loadRef = useRef(load);
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
+
   useEffect(() => {
     if (!user) return;
+    const channelName = `customer_requests_${user.id}_${Date.now()}`;
     const channel = supabase
-      .channel(`customer_requests_${user.id}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -151,7 +157,7 @@ export default function CustomerHome() {
           filter: `customer_id=eq.${user.id}`,
         },
         () => {
-          load();
+          loadRef.current();
         }
       )
       .subscribe();
@@ -159,7 +165,7 @@ export default function CustomerHome() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, load]);
+  }, [user]);
 
   async function onRefresh() {
     setRefreshing(true);

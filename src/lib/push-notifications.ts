@@ -38,20 +38,37 @@ setNotificationHandler({
 export async function setupMechanicNotificationChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
 
+  const isExpoGo = Constants.appOwnership === 'expo';
+
+  const baseConfig = {
+    name: 'Mechanic Assistance Requests',
+    description: 'Notifications for incoming roadside assistance requests.',
+    importance: AndroidImportance.MAX,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: '#38B8E8',
+    enableLights: true,
+    enableVibrate: true,
+    showBadge: true,
+    lockscreenVisibility: AndroidNotificationVisibility.PUBLIC,
+    bypassDnd: false,
+  };
+
+  // In standalone / prebuild / dev-client APKs, request_alert.wav exists in android/app/src/main/res/raw.
+  // In Expo Go, custom raw audio assets do not exist and the native Android module throws a NullPointerException.
+  if (!isExpoGo) {
+    try {
+      await setNotificationChannelAsync(MECHANIC_REQUESTS_CHANNEL_ID, {
+        ...baseConfig,
+        sound: 'request_alert.wav',
+      });
+      return;
+    } catch {
+      // Fall through to standard configuration if native raw resource lookup fails
+    }
+  }
+
   try {
-    await setNotificationChannelAsync(MECHANIC_REQUESTS_CHANNEL_ID, {
-      name: 'Mechanic Assistance Requests',
-      description: 'Notifications for incoming roadside assistance requests.',
-      importance: AndroidImportance.MAX,
-      sound: 'request_alert.wav',
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#38B8E8',
-      enableLights: true,
-      enableVibrate: true,
-      showBadge: true,
-      lockscreenVisibility: AndroidNotificationVisibility.PUBLIC,
-      bypassDnd: false,
-    });
+    await setNotificationChannelAsync(MECHANIC_REQUESTS_CHANNEL_ID, baseConfig);
   } catch (error) {
     console.warn('[PushNotifications] Failed to setup notification channel:', error);
   }
@@ -90,13 +107,20 @@ export async function registerForPushNotificationsAsync(userId: string): Promise
       return null;
     }
 
-    // 3. Obtain EAS / Expo Project ID
+    // 3. In Expo Go on Android (SDK 53+), remote push notifications were removed by Expo.
+    // They work in development builds (npx expo run:android) and standalone APKs.
+    if (Constants.appOwnership === 'expo') {
+      // Supabase Realtime handles all in-app notifications in Expo Go.
+      return null;
+    }
+
+    // 4. Obtain EAS / Expo Project ID
     const projectId =
       Constants?.expoConfig?.extra?.eas?.projectId ??
       Constants?.easConfig?.projectId ??
       'a534a5e7-a25a-42f6-8b92-2322ec38c40f';
 
-    // 4. Get the Expo Push Token
+    // 5. Get the Expo Push Token
     const tokenResponse = await getExpoPushTokenAsync({
       projectId,
     });
@@ -107,7 +131,7 @@ export async function registerForPushNotificationsAsync(userId: string): Promise
       return null;
     }
 
-    // 5. Store/upsert push token into Supabase for this user
+    // 6. Store/upsert push token into Supabase for this user
     const deviceName = Device.modelName ?? `${Platform.OS} device`;
     const { error: dbError } = await supabase.from('user_push_tokens').upsert(
       {
