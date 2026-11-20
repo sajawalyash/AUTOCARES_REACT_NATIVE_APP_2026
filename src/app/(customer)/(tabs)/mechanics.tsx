@@ -13,9 +13,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import MapView, { Circle, PROVIDER_GOOGLE } from '../../../components/roadside-map';
-import { CustomerLocationMarker } from '../../../components/map/customer-marker';
-import { MechanicMarker } from '../../../components/map/mechanic-marker';
+import MapView, { Circle, Marker, PROVIDER_GOOGLE } from '../../../components/roadside-map';
+import { CustomerMarkerView } from '../../../components/map/customer-marker';
+import { MechanicMarkerView } from '../../../components/map/mechanic-marker';
 import { RadiusSelector } from '../../../components/map/radius-selector';
 import { SearchThisAreaButton } from '../../../components/map/search-this-area-button';
 import { MapLegend } from '../../../components/map/map-legend';
@@ -31,6 +31,7 @@ import {
   distanceKm,
   distanceMeters,
   etaMinutesFromDistance,
+  formatDistance,
   SEARCH_RADII_METERS,
   type SearchRadiusMeters,
 } from '../../../lib/geo';
@@ -44,12 +45,15 @@ const isExpoGo =
   (Constants as unknown as { executionEnvironment?: string }).executionEnvironment ===
     'storeClient';
 
-const DEFAULT_REGION = {
-  latitude: 24.8607,
-  longitude: 67.0011,
-  latitudeDelta: 0.08,
-  longitudeDelta: 0.08,
+// Core AutoCares Service Hub in Karachi (where registered approved workshops are located)
+const KARACHI_HUB = {
+  latitude: 24.9255,
+  longitude: 67.0650,
+  latitudeDelta: 0.06,
+  longitudeDelta: 0.06,
 };
+
+const DEFAULT_REGION = KARACHI_HUB;
 
 function isVehicleType(value: string | undefined): value is VehicleType {
   return value === 'Car' || value === 'Van' || value === 'Bike' || value === 'Scooter';
@@ -121,28 +125,48 @@ export default function MechanicsScreen() {
       setError(null);
 
       let center = centerOverride || searchCenter;
-      let customerLocation: { latitude: number; longitude: number } | null = coords;
 
       if (!centerOverride && !coords) {
         try {
           const loc = await getCurrentCoords();
           if (loc.coords) {
-            customerLocation = loc.coords;
-            center = loc.coords;
             setCoords(loc.coords);
-            setSearchCenter(loc.coords);
             setPermissionDenied(false);
             setManualLatitude(String(loc.coords.latitude));
             setManualLongitude(String(loc.coords.longitude));
-            void updateAddressLabel(loc.coords.latitude, loc.coords.longitude);
+
+            // Check if customer GPS is in/near the Karachi service hub
+            const distFromKarachi = distanceKm(
+              loc.coords.latitude,
+              loc.coords.longitude,
+              KARACHI_HUB.latitude,
+              KARACHI_HUB.longitude
+            );
+
+            if (distFromKarachi <= 50) {
+              center = loc.coords;
+              setSearchCenter(loc.coords);
+              void updateAddressLabel(loc.coords.latitude, loc.coords.longitude);
+            } else {
+              // Remote simulator location (e.g. Android Emulator in Mountain View CA)
+              center = KARACHI_HUB;
+              setSearchCenter(KARACHI_HUB);
+              void updateAddressLabel(KARACHI_HUB.latitude, KARACHI_HUB.longitude);
+            }
           } else {
             setPermissionDenied(true);
+            center = KARACHI_HUB;
+            setSearchCenter(KARACHI_HUB);
+            void updateAddressLabel(KARACHI_HUB.latitude, KARACHI_HUB.longitude);
             if (loc.error) {
               setError(loc.error);
             }
           }
         } catch (locErr) {
           setPermissionDenied(true);
+          center = KARACHI_HUB;
+          setSearchCenter(KARACHI_HUB);
+          void updateAddressLabel(KARACHI_HUB.latitude, KARACHI_HUB.longitude);
           setError(locErr instanceof Error ? locErr.message : 'Could not retrieve device location.');
         }
       }
@@ -165,9 +189,10 @@ export default function MechanicsScreen() {
         setMechanics(nearby);
 
         // Center map to initial view
-        if (customerLocation && !centerOverride) {
+        if (!centerOverride) {
           mapRef.current?.animateToRegion({
-            ...customerLocation,
+            latitude: center.latitude,
+            longitude: center.longitude,
             latitudeDelta: 0.05,
             longitudeDelta: 0.05,
           });
@@ -362,15 +387,23 @@ export default function MechanicsScreen() {
   const handleRecenterCustomer = useCallback(() => {
     setShowSearchThisArea(false);
     if (coords) {
-      setSearchCenter(coords);
-      void updateAddressLabel(coords.latitude, coords.longitude);
+      const distFromKarachi = distanceKm(
+        coords.latitude,
+        coords.longitude,
+        KARACHI_HUB.latitude,
+        KARACHI_HUB.longitude
+      );
+
+      const target = distFromKarachi <= 50 ? coords : KARACHI_HUB;
+      setSearchCenter(target);
+      void updateAddressLabel(target.latitude, target.longitude);
       mapRef.current?.animateToRegion({
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        latitudeDelta: 0.04,
-        longitudeDelta: 0.04,
+        latitude: target.latitude,
+        longitude: target.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
       });
-      void load(coords);
+      void load(target);
     } else {
       void load();
     }
@@ -526,8 +559,8 @@ export default function MechanicsScreen() {
   }, [manualLatitude, manualLongitude, load, updateAddressLabel]);
 
   const initialRegion = {
-    latitude: coords?.latitude ?? searchCenter.latitude,
-    longitude: coords?.longitude ?? searchCenter.longitude,
+    latitude: searchCenter.latitude,
+    longitude: searchCenter.longitude,
     latitudeDelta: DEFAULT_REGION.latitudeDelta,
     longitudeDelta: DEFAULT_REGION.longitudeDelta,
   };
@@ -552,17 +585,43 @@ export default function MechanicsScreen() {
         />
 
         {/* Customer Location Pointer (Blue GPS Dot) */}
-        {coords && <CustomerLocationMarker coordinate={coords} />}
+        {coords && (
+          <Marker
+            coordinate={coords}
+            anchor={{ x: 0.5, y: 0.5 }}
+            tracksViewChanges={false}
+            title="Your Location"
+            description="Live GPS Position"
+            zIndex={50}>
+            <CustomerMarkerView />
+          </Marker>
+        )}
 
         {/* Custom Mechanic Markers (Blue Teardrop Wrench Pins) */}
-        {filteredMechanics.map((mechanic) => (
-          <MechanicMarker
-            key={mechanic.user_id}
-            mechanic={mechanic}
-            isSelected={effectiveSelectedMechanicId === mechanic.user_id}
-            onPress={handleSelectMechanic}
-          />
-        ))}
+        {filteredMechanics.map((mechanic) => {
+          const isSelected = effectiveSelectedMechanicId === mechanic.user_id;
+          const isAvailable = mechanic.is_available !== false;
+          return (
+            <Marker
+              key={mechanic.user_id}
+              coordinate={{
+                latitude: Number(mechanic.latitude),
+                longitude: Number(mechanic.longitude),
+              }}
+              anchor={{ x: 0.5, y: 1.0 }}
+              tracksViewChanges={false}
+              zIndex={isSelected ? 999 : isAvailable ? 100 : 80}
+              title={mechanic.workshop_name || mechanic.profiles?.full_name || 'Mechanic'}
+              description={
+                isAvailable
+                  ? `${formatDistance(mechanic.distance_km)} away · Available`
+                  : `${formatDistance(mechanic.distance_km)} away · Busy`
+              }
+              onPress={() => handleSelectMechanic(mechanic)}>
+              <MechanicMarkerView mechanic={mechanic} isSelected={isSelected} />
+            </Marker>
+          );
+        })}
       </MapView>
 
       {/* TOP FLOATING OVERLAY: Search Bar & Vehicle Filters */}

@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import { fetchProfile } from '../lib/profiles';
+import { unregisterPushToken } from '../lib/push-notifications';
 import { supabase } from '../lib/supabase';
 import type { MechanicType, Profile, UserRole, VehicleType } from '../lib/types';
 
@@ -198,6 +199,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       },
       async signOut() {
         try {
+          if (session?.user?.id) {
+            await unregisterPushToken(session.user.id).catch(() => {});
+          }
           const { error } = await supabase.auth.signOut();
           setProfile(null);
           return { error: error?.message ?? null };

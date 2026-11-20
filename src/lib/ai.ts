@@ -1,6 +1,9 @@
 import { supabase } from './supabase';
 import type { MechanicType, VehicleType } from './types';
 
+export const STRICT_RESTRICTION_MESSAGE =
+  'I am designed specifically to help with vehicle breakdowns and troubleshooting. I can only assist with vehicle-related problems. Thank you for your understanding.';
+
 export type AiGuidance = {
   summary: string;
   possible_causes: string[];
@@ -31,28 +34,230 @@ export type ObdContext = {
   codes: { code: string; status: 'stored' | 'pending' | 'permanent' }[];
 };
 
+export type QueryClassification =
+  | { type: 'unrelated' }
+  | { type: 'vehicle'; sanitizedPrompt?: string }
+  | { type: 'mixed'; vehiclePart: string }
+  | { type: 'ambiguous' };
+
+// 1. Unrelated patterns (trivia, coding, math, entertainment, personal, prompt injection)
+export const UNRELATED_PATTERNS = [
+  // Math & calculations
+  /\b\d+\s*[\+\-\*\/]\s*\d+\b/i,
+  /\b(what\s+is|solve|calculate|evaluate)\s+\d+/i,
+  /\b(math|mathematics|calculus|algebra|equation|geometry)\b/i,
+
+  // Programming & software development
+  /\b(python|javascript|typescript|c\+\+|java|html|css|php|ruby|golang|rust|sql\s+query)\b/i,
+  /\b(write|create|generate|debug)\s+(me\s+)?(a\s+)?(script|code|program|software|algorithm|function|app|website|bot)\b/i,
+  /\b(coding|programming)\b/i,
+
+  // Creative writing & entertainment
+  /\b(tell\s+me|write|give\s+me)\s+(a\s+)?(joke|poem|poetry|story|song|lyrics|riddle)\b/i,
+  /\b(funny\s+joke|comedy)\b/i,
+
+  // General knowledge / trivia / geography / politics / news
+  /\bcapital\s+of\b/i,
+  /\b(who\s+is|who\s+was|who\s+won|who\s+lost)\b/i,
+  /\b(president|prime\s+minister|politician|parliament|election|government)\b/i,
+  /\b(latest\s+news|current\s+events|breaking\s+news|weather\s+forecast|weather\s+in)\b/i,
+  /\b(history\s+of|population\s+of|currency\s+of|flag\s+of)\b/i,
+  /\bexplain\s+(quantum|artificial\s+intelligence|machine\s+learning|crypto|bitcoin|nft|blockchain)\b/i,
+
+  // Career / academic / personal advice
+  /\b(cv|resume|job\s+application|cover\s+letter)\b/i,
+  /\b(write|create|draft|review)\s+.*(cv|resume|job\s+application|cover\s+letter|essay|assignment)\b/i,
+  /\b(homework|exam|quiz)\b/i,
+  /\b(relationship|dating|love|marriage)\s+advice\b/i,
+  /\b(recipe\s+for|how\s+to\s+cook|diet\s+plan|workout\s+routine)\b/i,
+
+  // Sports & matches
+  /\b(cricket|football|soccer|tennis|basketball|nba|ipl|psl|world\s+cup)\s*(match|score|update|game|team)?\b/i,
+
+  // Prompt injection & role overrides
+  /\b(ignore\s+(all\s+|your\s+|previous\s+)?instructions|you\s+are\s+now|pretend\s+(to\s+be|you\s+are)|system\s+prompt|reveal\s+(your\s+)?(prompt|key|instructions)|forget\s+your\s+(instructions|role))\b/i,
+  /\b(dan\s+mode|jailbreak|developer\s+mode)\b/i,
+];
+
+// 2. Legitimate automotive / vehicle breakdown & troubleshooting patterns
+export const VEHICLE_BREAKDOWN_PATTERNS = [
+  /\b(won'?t\s+start|not\s+starting|start\s+problem|crank|no\s+crank|won'?t\s+turn\s+over|hard\s+start)\b/i,
+  /\b(battery|dead\s+battery|jump\s*start|jumpstart|alternator|starter\s+motor|voltage|terminal)\b/i,
+  /\b(overheat|overheating|temperature\s+(is\s+)?(high|rising|up)|coolant|radiator|antifreeze|water\s+pump)\b/i,
+  /\b(flat\s+t[iy]re|t[iy]re|tire|puncture|blowout|spare\s+t[iy]re|jack|lug\s+nut|wheel|rim|tpms)\b/i,
+  /\b(brake|brakes|braking|brake\s+fluid|brake\s+pad|pedal|spongy\s+pedal|abs|caliper|rotor)\b/i,
+  /\b(engine|check\s+engine|misfire|stalled?|died\s+while|stopped\s+while|sputter|shudder|shaking|vibrat)\b/i,
+  /\b(clutch|transmission|gear|gearbox|shifter|slipping\s+gear|won'?t\s+shift|reverse|drive)\b/i,
+  /\b(smoke|smoking|steam|burning\s+smell|leak|leaking|dripping\s+fluid|oil\s+leak|fluid\s+leak)\b/i,
+  /\b(clicking|ticking|grinding|squealing|squeaking|knocking|rattling|hissing|whining)\b/i,
+  /\b(losing\s+power|loss\s+of\s+power|limp\s+mode|won'?t\s+move|stuck\s+on\s+the\s+road)\b/i,
+  /\b(dashboard|warning\s+light|odometer|speedometer|fuel\s+gauge|temp\s+gauge|instrument\s+cluster)\b/i,
+  /\b(fuel|gasoline|petrol|diesel|fuel\s+pump|fuel\s+filter|injector|carburetor|gas\s+tank)\b/i,
+  /\b(kick\s*start|chain|throttle|handlebar|sprocket|spark\s+plug|ignition\s+coil)\b/i,
+  /\b(roadside|breakdown|broke\s+down|stranded|towing|mechanic|assistance)\b/i,
+  /\b(car|bike|motorcycle|scooter|van|vehicle|truck|automobile)\b/i,
+];
+
+// Patterns where vehicle words are used superficially in unrelated requests
+export const SUPERFICIAL_VEHICLE_PATTERNS = [
+  /\b(write|create|code|generate)\s+.*(script|program|code|algorithm|app|class|function).*about\s+(a\s+)?(car|bike|vehicle|motorcycle|scooter|van)/i,
+  /\b(tell\s+me|write)\s+.*(joke|poem|story|song|essay).*about\s+(a\s+)?(car|bike|vehicle|motorcycle|scooter|van)/i,
+  /\b(cv|resume|job\s+application).*for\s+(a\s+)?(mechanic|driver|car)/i,
+];
+
+/**
+ * Classifies an incoming user prompt to guarantee strict domain restriction.
+ */
+export function classifyAssistantQuery(
+  text: string,
+  history?: AssistantMessage[]
+): QueryClassification {
+  const trimmed = text.trim();
+  if (!trimmed) return { type: 'ambiguous' };
+
+  // 1. Superficial vehicle keywords inside unrelated requests
+  for (const pattern of SUPERFICIAL_VEHICLE_PATTERNS) {
+    if (pattern.test(trimmed)) {
+      return { type: 'unrelated' };
+    }
+  }
+
+  // 2. Check for mixed queries: legitimate vehicle breakdown + unrelated request
+  const hasVehicle = VEHICLE_BREAKDOWN_PATTERNS.some((p) => p.test(trimmed));
+  const hasUnrelated = UNRELATED_PATTERNS.some((p) => p.test(trimmed));
+
+  if (hasVehicle && hasUnrelated) {
+    const vehiclePart = extractVehiclePart(trimmed);
+    if (vehiclePart && vehiclePart.length >= 5) {
+      return { type: 'mixed', vehiclePart };
+    }
+    return { type: 'unrelated' };
+  }
+
+  // 3. Exclusively unrelated queries
+  if (hasUnrelated) {
+    return { type: 'unrelated' };
+  }
+
+  // 4. Exclusively vehicle-related queries
+  if (hasVehicle) {
+    return { type: 'vehicle', sanitizedPrompt: trimmed };
+  }
+
+  // 5. Contextual follow-up check:
+  // If the conversation history is already vehicle-related, accept short follow-up answers/symptoms
+  if (history && history.length > 0) {
+    const hasPriorVehicleContext = history.some((m) =>
+      VEHICLE_BREAKDOWN_PATTERNS.some((p) => p.test(m.text))
+    );
+    if (hasPriorVehicleContext) {
+      const isContextualFollowup =
+        /^(yes|no|yeah|nope|sure|ok|okay|neither|both)\b/i.test(trimmed) ||
+        /\b(click|clicks|clicking|sound|noise|smoke|steam|leak|light|gauge|front|rear|left|right|hot|cold|under|pedal|gear|seconds|minutes|solid|blinking|flashing|stationary|moving)\b/i.test(
+          trimmed
+        ) ||
+        trimmed.length < 80;
+
+      if (isContextualFollowup) {
+        return { type: 'vehicle', sanitizedPrompt: trimmed };
+      }
+    }
+  }
+
+  // 6. Ambiguous standalone query without vehicle context
+  return { type: 'ambiguous' };
+}
+
+/**
+ * Extracts only the vehicle breakdown portion from a mixed query.
+ */
+export function extractVehiclePart(text: string): string {
+  const parts = text.split(/(?:\.|\?|!|\band\b|\balso\b|\bby the way\b|\bplus\b)/i);
+  const vehicleParts = parts.filter(
+    (part) =>
+      VEHICLE_BREAKDOWN_PATTERNS.some((p) => p.test(part)) &&
+      !UNRELATED_PATTERNS.some((p) => p.test(part))
+  );
+  return vehicleParts.join('. ').trim();
+}
+
+/**
+ * Main AI guidance function with multi-layer domain protection.
+ */
 export async function getVehicleGuidance(input: {
   messages: AssistantMessage[];
   vehicle: VehicleContext;
   problemType: string;
   diagnostics?: ObdContext | null;
 }): Promise<{ guidance: AiGuidance | null; error: string | null }> {
-  // 1. Attempt Supabase Edge Function if available
+  const latestMessage = input.messages[input.messages.length - 1];
+  const history = input.messages.slice(0, -1);
+  const classification = classifyAssistantQuery(latestMessage?.text || '', history);
+
+  // Layer 1: Client-side domain restriction enforcement
+  if (classification.type === 'unrelated') {
+    return {
+      guidance: {
+        summary: STRICT_RESTRICTION_MESSAGE,
+        possible_causes: [],
+        next_steps: [],
+        urgency: 'low',
+        safety_note: '',
+        follow_up_question: null,
+        recommend_mechanic: false,
+      },
+      error: null,
+    };
+  }
+
+  // If mixed query: sanitize latest message to vehicle part only
+  let sanitizedInput = input;
+  if (classification.type === 'mixed' && classification.vehiclePart) {
+    const updatedMessages = [...input.messages];
+    updatedMessages[updatedMessages.length - 1] = {
+      role: 'user',
+      text: classification.vehiclePart,
+    };
+    sanitizedInput = {
+      ...input,
+      messages: updatedMessages,
+    };
+  }
+
+  // Layer 2: Attempt Supabase Edge Function (Gemini API with secure server-side domain guard)
   try {
     const { data, error } = await supabase.functions.invoke('vehicle-assistant', {
-      body: input,
-      timeout: 10_000,
+      body: sanitizedInput,
+      timeout: 12_000,
     });
     if (!error && isAiGuidance(data?.guidance)) {
+      // Validate returned guidance
+      if (
+        data.guidance.summary === STRICT_RESTRICTION_MESSAGE ||
+        data.guidance.summary.includes('designed specifically to help with vehicle')
+      ) {
+        return {
+          guidance: {
+            summary: STRICT_RESTRICTION_MESSAGE,
+            possible_causes: [],
+            next_steps: [],
+            urgency: 'low',
+            safety_note: '',
+            follow_up_question: null,
+            recommend_mechanic: false,
+          },
+          error: null,
+        };
+      }
       return { guidance: data.guidance, error: null };
     }
   } catch {
-    // Edge function not reachable, fall through to intelligent local automotive diagnostic engine
+    // Edge function unreachable; fall through to intelligent local automotive diagnostic engine
   }
 
-  // 2. Fallback to Local Automotive Diagnostic Engine
+  // Layer 3: Intelligent Local Automotive Diagnostic Engine fallback
   try {
-    const localGuidance = generateLocalGuidance(input);
+    const localGuidance = generateLocalGuidance(sanitizedInput);
     return { guidance: localGuidance, error: null };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Please retry.';
@@ -89,24 +294,90 @@ function isAiGuidance(value: unknown): value is AiGuidance {
  * Intelligent Automotive Diagnostic Rules Engine
  * Provides immediate roadside troubleshooting when remote edge functions are unreachable.
  */
-function generateLocalGuidance(input: {
+export function generateLocalGuidance(input: {
   messages: AssistantMessage[];
   vehicle: VehicleContext;
   problemType: string;
   diagnostics?: ObdContext | null;
 }): AiGuidance {
+  const latestMessage = input.messages[input.messages.length - 1];
+  const history = input.messages.slice(0, -1);
+  const classification = classifyAssistantQuery(latestMessage?.text || '', history);
+
+  // Domain guard
+  if (classification.type === 'unrelated') {
+    return {
+      summary: STRICT_RESTRICTION_MESSAGE,
+      possible_causes: [],
+      next_steps: [],
+      urgency: 'low',
+      safety_note: '',
+      follow_up_question: null,
+      recommend_mechanic: false,
+    };
+  }
+
+  // Ambiguous query guard
+  if (classification.type === 'ambiguous') {
+    return {
+      summary:
+        'Please describe the problem your vehicle is experiencing (e.g., won\'t start, engine overheating, flat tire, clicking noise, dashboard warning light), and I will guide you with safe roadside troubleshooting steps.',
+      possible_causes: [],
+      next_steps: [
+        'Describe the exact symptom or noise you noticed.',
+        'Mention if any dashboard warning lights are illuminated.',
+        'Let me know if you are safely stopped on the roadside.',
+      ],
+      urgency: 'low',
+      safety_note:
+        'If you are stopped on an active road or highway, please ensure your hazard warning lights are on and you are in a safe location.',
+      follow_up_question: 'What symptoms or warning signs did you observe?',
+      recommend_mechanic: false,
+    };
+  }
+
   const userText = input.messages
     .filter((m) => m.role === 'user')
     .map((m) => m.text.toLowerCase())
     .join(' ');
 
   const problem = (input.problemType || '').toLowerCase();
-  const vehicleDesc = `${input.vehicle.year ? input.vehicle.year + ' ' : ''}${input.vehicle.make || ''} ${input.vehicle.model || input.vehicle.vehicle_type}`.trim();
+  const vType = input.vehicle.vehicle_type;
+  const vehicleDesc = `${input.vehicle.year ? input.vehicle.year + ' ' : ''}${
+    input.vehicle.make || ''
+  } ${input.vehicle.model || vType}`.trim();
 
-  // Check OBD-II codes if present
   const obdCodes = input.diagnostics?.codes?.map((c) => c.code.toUpperCase()) ?? [];
 
-  // 1. OVERHEATING
+  // DANGEROUS ROAD EMERGENCY: Severe Brakes, Fuel Leak, Smoke / Fire
+  if (
+    /\b(fuel\s+leak|gasoline\s+leak|leaking\s+gas|fuel\s+smell|smell\s+of\s+gas)\b/i.test(userText) ||
+    /\b(smoke|smoking\s+heavily|engine\s+fire|burning\s+wire)\b/i.test(userText) ||
+    /\bbrake\b.{0,30}\b(failed|failure|not\s+working|gone|pedal\s+to\s+floor)\b/i.test(userText)
+  ) {
+    return {
+      summary: `EMERGENCY ROADSIDE ALERT: Critical safety hazard detected on your ${vehicleDesc}. Immediate action is required to avoid collision, fire, or injury.`,
+      possible_causes: [
+        'Ruptured pressurized fuel line, injector seal, or tank puncture',
+        'Complete hydraulic brake circuit loss (blown brake hose or master cylinder failure)',
+        'Electrical short-circuit or burning fluid spraying onto hot exhaust manifold',
+      ],
+      next_steps: [
+        'Bring the vehicle to a controlled stop immediately away from moving traffic.',
+        'Turn off the ignition switch to cut electrical power and fuel pump pressure.',
+        'Evacuate all passengers to a safe location behind the highway guardrail or off the road.',
+        'Do NOT crank the engine or open the hood if dense smoke or flame is visible.',
+        'Request emergency roadside assistance or emergency services immediately.',
+      ],
+      urgency: 'high',
+      safety_note:
+        'CRITICAL SAFETY WARNING: Do NOT attempt roadside repair. Fuel leaks and active smoke present extreme fire and collision risks.',
+      follow_up_question: null,
+      recommend_mechanic: true,
+    };
+  }
+
+  // 1. OVERHEATING / TEMPERATURE / STEAM
   if (
     problem.includes('overheat') ||
     userText.includes('overheat') ||
@@ -121,14 +392,14 @@ function generateLocalGuidance(input: {
       summary: `High coolant temperature or overheating detected on your ${vehicleDesc}. Continued driving risks warping the cylinder head or blowing the head gasket.`,
       possible_causes: [
         'Low coolant level from radiator, hose, or water pump leak',
-        'Stuck-closed thermostat preventing coolant flow',
+        'Stuck-closed thermostat preventing coolant circulation',
         'Inoperative electric radiator cooling fan or blown fuse',
         'Broken serpentine / water pump drive belt',
         'Clogged radiator core fins blocking airflow',
       ],
       next_steps: [
         'Pull over safely away from traffic and turn off engine immediately.',
-        'Wait at least 25 to 30 minutes for the engine to cool before touching anything.',
+        'Wait at least 25 to 30 minutes for the engine to cool down before opening the hood.',
         'Inspect the ground under the engine bay for dripping pink or green coolant.',
         'Check the transparent plastic coolant reservoir once cool; add 50/50 coolant or clean water if empty.',
         'Request a verified mechanic if the temperature rises again immediately upon restart.',
@@ -137,17 +408,54 @@ function generateLocalGuidance(input: {
       safety_note:
         'CRITICAL: Never open the radiator or expansion tank cap while the engine is hot. Pressurized boiling coolant will spray out and cause severe burn injuries.',
       follow_up_question:
-        'Did the temperature spike suddenly or creep up in traffic, and do you hear boiling or hissing from under the hood?',
+        'Did the temperature spike suddenly or creep up in traffic, and do you see steam or coolant leaking?',
       recommend_mechanic: true,
     };
   }
 
-  // 2. DEAD BATTERY / NO START / CLICKING
+  // 2. MOTORCYCLE / BIKE / SCOOTER SPECIFIC
+  if (
+    (vType === 'Bike' || vType === 'Scooter') &&
+    (userText.includes('kick') ||
+      userText.includes('chain') ||
+      userText.includes('sprocket') ||
+      userText.includes('stopped while') ||
+      userText.includes('riding') ||
+      userText.includes('scooter') ||
+      userText.includes('bike'))
+  ) {
+    return {
+      summary: `Two-wheeler roadside issue analyzed for your ${vehicleDesc}. Engine stopped or drive mechanism interrupted during operation.`,
+      possible_causes: [
+        'Faulty or fouled spark plug / loosened spark plug cap',
+        'Fuel starvation: clogged fuel petcock filter or empty tank',
+        'Safety side-stand switch sensor engaged or corroded',
+        'Dead 12V motorcycle battery or faulty CDI / stator coil',
+        'Drive chain slipped, loose, or broken (or CVT belt on scooter)',
+      ],
+      next_steps: [
+        'Push the bike safely onto the shoulder away from traffic and deploy the center stand.',
+        'Ensure the handlebar engine kill-switch is in the "RUN" position and side-stand is fully retracted.',
+        'Check fuel petcock: switch to "RESERVE" if fuel level is low.',
+        'Inspect spark plug boot: ensure it is firmly snapped onto the spark plug terminal.',
+        'If kickstarting: check for normal compression resistance.',
+      ],
+      urgency: 'medium',
+      safety_note:
+        'Ensure you are standing on the safe shoulder side of the motorcycle away from passing traffic.',
+      follow_up_question:
+        'Does the starter crank at all, or did the engine cut out completely while riding?',
+      recommend_mechanic: true,
+    };
+  }
+
+  // 3. DEAD BATTERY / NO START / CLICKING
   if (
     problem.includes('battery') ||
     userText.includes('battery') ||
     userText.includes('wont start') ||
     userText.includes("won't start") ||
+    userText.includes('not start') ||
     userText.includes('click') ||
     userText.includes('crank') ||
     userText.includes('jump') ||
@@ -157,7 +465,7 @@ function generateLocalGuidance(input: {
     return {
       summary: `Starting or electrical power fault diagnosed for your ${vehicleDesc}. The engine is not receiving adequate cranking amperage to turn over.`,
       possible_causes: [
-        'Discharged or degraded 12V lead-acid battery',
+        'Discharged or degraded 12V vehicle battery',
         'Corroded (white/blue residue) or loose battery terminal clamps',
         'Failing starter motor solenoid or worn brushes',
         'Alternator charging failure (battery drained while driving)',
@@ -165,7 +473,7 @@ function generateLocalGuidance(input: {
       ],
       next_steps: [
         'Observe instrument cluster: do lights turn off or dim completely when turning the key?',
-        'Listen for starter sound: rapid clicking indicates low voltage; total silence indicates connection/starter fault.',
+        'Listen for starter sound: rapid clicking indicates low battery voltage; total silence indicates connection/starter fault.',
         'Inspect battery terminals for loose connections or corrosion powder.',
         'Perform a jump-start using booster cables or a portable lithium jump pack.',
         'If the vehicle jumps but dies shortly after removing cables, replace or test the alternator.',
@@ -179,7 +487,7 @@ function generateLocalGuidance(input: {
     };
   }
 
-  // 3. FLAT TIRE / WHEEL / PUNCTURE
+  // 4. FLAT TIRE / WHEEL / PUNCTURE
   if (
     problem.includes('tire') ||
     userText.includes('tire') ||
@@ -213,7 +521,7 @@ function generateLocalGuidance(input: {
     };
   }
 
-  // 4. BRAKES / SQUEALING / SOFT PEDAL
+  // 5. BRAKES / SQUEALING / SOFT PEDAL
   if (
     userText.includes('brake') ||
     userText.includes('pedal') ||
@@ -245,7 +553,7 @@ function generateLocalGuidance(input: {
     };
   }
 
-  // 5. ENGINE ISSUE / CHECK ENGINE LIGHT / MISFIRE
+  // 6. ENGINE ISSUE / CHECK ENGINE LIGHT / MISFIRE
   if (
     problem.includes('engine') ||
     userText.includes('engine') ||
@@ -254,7 +562,6 @@ function generateLocalGuidance(input: {
     userText.includes('shake') ||
     userText.includes('shudder') ||
     userText.includes('stall') ||
-    userText.includes('smoke') ||
     obdCodes.some((c) => c.startsWith('P03') || c.startsWith('P04') || c.startsWith('P01'))
   ) {
     const obdNote = obdCodes.length > 0 ? ` (DTC detected: ${obdCodes.join(', ')})` : '';
@@ -274,7 +581,7 @@ function generateLocalGuidance(input: {
         'Connect OBD-II adapter to scan confirmed and pending trouble codes.',
         'Avoid heavy throttle acceleration or high speed highway driving.',
       ],
-      urgency: userText.includes('flashing') || userText.includes('smoke') ? 'high' : 'medium',
+      urgency: userText.includes('flashing') ? 'high' : 'medium',
       safety_note:
         'A flashing Check Engine light indicates active raw fuel dumping into the exhaust, which can destroy the catalytic converter within minutes or trigger an engine bay fire.',
       follow_up_question:
@@ -283,7 +590,7 @@ function generateLocalGuidance(input: {
     };
   }
 
-  // 6. TRANSMISSION / GEARS / CLUTCH
+  // 7. TRANSMISSION / GEARS / CLUTCH
   if (
     userText.includes('gear') ||
     userText.includes('transmission') ||
@@ -315,9 +622,9 @@ function generateLocalGuidance(input: {
     };
   }
 
-  // 7. GENERAL ROADSIDE GUIDANCE (Tailored to vehicle)
+  // 8. GENERAL ROADSIDE GUIDANCE (Tailored to vehicle)
   return {
-    summary: `Roadside assessment for your ${vehicleDesc} regarding: "${input.messages[input.messages.length - 1]?.text || input.problemType}".`,
+    summary: `Roadside assessment for your ${vehicleDesc} regarding: "${latestMessage?.text || input.problemType}".`,
     possible_causes: [
       'Component wear or loose electrical harness connection',
       'Fluid level discrepancy (coolant, oil, brake, or transmission fluid)',

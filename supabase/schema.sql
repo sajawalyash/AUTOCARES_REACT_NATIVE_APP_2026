@@ -1005,6 +1005,46 @@ begin
 end;
 $$;
 
+-- =====================
+-- user_push_tokens
+-- =====================
+create table if not exists public.user_push_tokens (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  push_token text not null,
+  platform text not null default 'android',
+  device_name text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint user_push_tokens_user_token_unique unique (user_id, push_token)
+);
+
+create index if not exists idx_user_push_tokens_user_id on public.user_push_tokens(user_id);
+alter table public.user_push_tokens enable row level security;
+
+drop policy if exists "Users can view their own push tokens" on public.user_push_tokens;
+create policy "Users can view their own push tokens"
+  on public.user_push_tokens for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "Users can insert their own push tokens" on public.user_push_tokens;
+create policy "Users can insert their own push tokens"
+  on public.user_push_tokens for insert
+  with check (auth.uid() = user_id);
+
+drop policy if exists "Users can update their own push tokens" on public.user_push_tokens;
+create policy "Users can update their own push tokens"
+  on public.user_push_tokens for update
+  using (auth.uid() = user_id);
+
+drop policy if exists "Users can delete their own push tokens" on public.user_push_tokens;
+create policy "Users can delete their own push tokens"
+  on public.user_push_tokens for delete
+  using (auth.uid() = user_id);
+
+-- Optional column on notifications
+select public._autocares_add_column('notifications', 'data', 'data jsonb default ''{}''::jsonb');
+
 -- After registering users:
 -- update mechanic_profiles set verification_status = 'approved', latitude = 24.8607, longitude = 67.0011, specialties = array['battery','tires','towing'], is_available = true where user_id = '<id>';
 -- update profiles set role = 'admin' where id = '<id>';

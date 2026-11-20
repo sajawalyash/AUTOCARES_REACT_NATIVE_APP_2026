@@ -5,6 +5,7 @@ export async function createNotification(input: {
   user_id: string;
   title: string;
   body: string;
+  data?: Record<string, any> | null;
 }) {
   const { data, error } = await supabase
     .from('notifications')

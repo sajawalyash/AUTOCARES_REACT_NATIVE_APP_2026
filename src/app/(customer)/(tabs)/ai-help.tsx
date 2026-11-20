@@ -24,6 +24,7 @@ import {
 import { theme } from '../../../constants/autocares-theme';
 import {
   getVehicleGuidance,
+  STRICT_RESTRICTION_MESSAGE,
   type AiGuidance,
   type AssistantMessage,
   type ObdContext,
@@ -339,7 +340,7 @@ function AiHelpSession({ diagnosticData }: { diagnosticData?: string }) {
         )}
 
         {/* Detailed AI Guidance Card */}
-        {guidance && (
+        {guidance && guidance.summary !== STRICT_RESTRICTION_MESSAGE && (
           <Card style={styles.guidanceCard}>
             <View style={styles.guidanceHeader}>
               <View style={styles.guidanceTitleRow}>

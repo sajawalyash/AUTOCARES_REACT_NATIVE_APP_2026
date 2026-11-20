@@ -2,6 +2,8 @@ import { supabase } from './supabase';
 import type { MechanicLocation, ProblemType, RequestStatus, ServiceRequest } from './types';
 import { FIXED_DIAGNOSIS_FEE } from './types';
 import { createNotification } from './notifications';
+import { dispatchMechanicNotification } from './push-notifications';
+import { distanceKm } from './geo';
 
 export async function createServiceRequest(input: {
   customer_id: string;
@@ -27,12 +29,86 @@ export async function createServiceRequest(input: {
     .single();
 
   if (!error && data?.mechanic_id) {
+    // 1. Fetch customer and mechanic details for rich notification text
+    let customerName: string | null = null;
+    let vehicleType: string | null = null;
+    let dist: number | null = null;
+
+    try {
+      const [profileRes, vehicleRes, mechanicRes] = await Promise.all([
+        supabase.from('profiles').select('full_name').eq('id', input.customer_id).maybeSingle(),
+        input.vehicle_id
+          ? supabase.from('vehicles').select('vehicle_type').eq('id', input.vehicle_id).maybeSingle()
+          : Promise.resolve({ data: null }),
+        data.customer_lat && data.customer_lng
+          ? supabase.from('mechanic_profiles').select('latitude, longitude').eq('user_id', data.mechanic_id).maybeSingle()
+          : Promise.resolve({ data: null }),
+      ]);
+
+      customerName = profileRes.data?.full_name ?? null;
+      vehicleType = vehicleRes.data?.vehicle_type ?? null;
+
+      if (
+        data.customer_lat &&
+        data.customer_lng &&
+        mechanicRes.data?.latitude &&
+        mechanicRes.data?.longitude
+      ) {
+        dist = distanceKm(
+          data.customer_lat,
+          data.customer_lng,
+          mechanicRes.data.latitude,
+          mechanicRes.data.longitude
+        );
+      }
+    } catch {
+      // Safe fallback if lookup fails
+    }
+
+    const distStr =
+      dist !== null
+        ? dist < 1
+          ? ` · ${Math.round(dist * 1000)} m away`
+          : ` · ${dist.toFixed(1)} km away`
+        : '';
+
+    const title = input.is_sos
+      ? '🚨 Emergency SOS Assistance Request'
+      : '🚗 New Assistance Request!';
+
+    const body = customerName
+      ? `${customerName} needs ${vehicleType || 'vehicle'} assistance${distStr}`
+      : input.is_sos
+      ? 'An emergency roadside SOS assistance request has been assigned to you. Review immediately.'
+      : `A customer nearby needs your help${distStr}. Tap to review.`;
+
+    // 2. Insert into database notifications
     await createNotification({
       user_id: data.mechanic_id,
-      title: input.is_sos ? '🚨 Emergency SOS Assistance Request' : 'New Roadside Assistance Request',
-      body: input.is_sos
-        ? 'An emergency roadside SOS assistance request has been assigned to you. Review and accept immediately.'
-        : 'A customer has sent you a roadside assistance request. Tap to review customer and vehicle details.',
+      title,
+      body,
+      data: {
+        requestId: data.id,
+        customerId: input.customer_id,
+        vehicleType,
+        problemType: input.problem_type,
+        isSos: input.is_sos ?? false,
+      },
+    });
+
+    // 3. Dispatch Push Notification (via Edge Function with client fallback)
+    dispatchMechanicNotification({
+      requestId: data.id,
+      mechanicId: data.mechanic_id,
+      customerId: input.customer_id,
+      customerName,
+      vehicleType,
+      problemType: input.problem_type,
+      distanceKm: dist,
+      description: input.description,
+      isSos: input.is_sos ?? false,
+    }).catch((pushErr) => {
+      console.warn('[Requests] Push dispatch failed:', pushErr);
     });
   }
 
@@ -165,6 +241,10 @@ export async function acceptRequest(requestId: string, mechanicId: string, etaMi
     user_id: data.customer_id,
     title: 'Mechanic Accepted Your Request!',
     body: `${mechanicName} has accepted your roadside assistance request (ETA: ~${etaMinutes} mins). Tap to view mechanic details and live coordination.`,
+    data: {
+      requestId: data.id,
+      mechanicId,
+    },
   });
 
   return { request: data as ServiceRequest, error: null };

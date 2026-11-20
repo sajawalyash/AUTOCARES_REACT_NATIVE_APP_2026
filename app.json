@@ -51,13 +51,25 @@
         "BLUETOOTH",
         "BLUETOOTH_ADMIN",
         "BLUETOOTH_SCAN",
-        "BLUETOOTH_CONNECT"
+        "BLUETOOTH_CONNECT",
+        "POST_NOTIFICATIONS",
+        "VIBRATE"
       ],
       "predictiveBackGestureEnabled": false
     },
     "plugins": [
       "./plugins/with-build-config",
       "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#38B8E8",
+          "sounds": [
+            "./assets/sounds/request_alert.wav"
+          ]
+        }
+      ],
       [
         "expo-splash-screen",
         {

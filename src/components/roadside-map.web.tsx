@@ -106,17 +106,42 @@ function loadGoogleMapsScript(apiKey: string): Promise<boolean> {
   });
 }
 
-function createSvgPin(color: string, label?: string) {
+function createCustomerPointerSvg() {
   const encoded = encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48">
+    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
       <defs>
-        <filter id="shadow" x="-20%" y="-10%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000000" flood-opacity="0.35"/>
+        <filter id="cshadow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.3"/>
         </filter>
       </defs>
-      <path d="M18 0 C8.06 0 0 8.06 0 18 C0 31.5 18 48 18 48 C18 48 36 31.5 36 18 C36 8.06 27.94 0 18 0 Z" fill="${color}" filter="url(#shadow)"/>
-      <circle cx="18" cy="18" r="8" fill="#FFFFFF"/>
-      <circle cx="18" cy="18" r="4.5" fill="${color}"/>
+      <circle cx="18" cy="18" r="16" fill="rgba(56, 184, 232, 0.28)" stroke="#38B8E8" stroke-width="1.5"/>
+      <circle cx="18" cy="18" r="9" fill="#FFFFFF" filter="url(#cshadow)"/>
+      <circle cx="18" cy="18" r="5.5" fill="#38B8E8"/>
+    </svg>
+  `);
+  return `data:image/svg+xml;charset=utf-8,${encoded}`;
+}
+
+function createMechanicWrenchPinSvg(color: string, isSelected?: boolean) {
+  const width = isSelected ? 44 : 36;
+  const height = isSelected ? 56 : 48;
+  const strokeColor = isSelected ? '#FFD52A' : '#FFFFFF';
+  const strokeWidth = isSelected ? '3' : '2.5';
+
+  const encoded = encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 36 48">
+      <defs>
+        <filter id="mshadow" x="-30%" y="-20%" width="160%" height="150%">
+          <feDropShadow dx="0" dy="3" stdDeviation="3.5" flood-color="#000000" flood-opacity="0.4"/>
+        </filter>
+      </defs>
+      ${isSelected ? '<circle cx="18" cy="18" r="21" fill="rgba(255, 213, 42, 0.4)" stroke="#FFD52A" stroke-width="2"/>' : ''}
+      <path d="M18 1 C9.16 1 2 8.16 2 17 C2 28.5 18 47 18 47 C18 47 34 28.5 34 17 C34 8.16 26.84 1 18 1 Z"
+            fill="${color}" stroke="${strokeColor}" stroke-width="${strokeWidth}" filter="url(#mshadow)"/>
+      <!-- White Wrench Vector Icon -->
+      <g transform="translate(9, 8) scale(0.75)" fill="#FFFFFF">
+        <path d="M22.7 19.3L15.3 11.9C15.8 10.4 15.5 8.7 14.3 7.5C13 6.2 11.1 5.8 9.5 6.4L12.6 9.5L9.5 12.6L6.4 9.5C5.8 11.1 6.2 13 7.5 14.3C8.7 15.5 10.4 15.8 11.9 15.3L19.3 22.7C19.7 23.1 20.3 23.1 20.7 22.7L22.7 20.7C23.1 20.3 23.1 19.7 22.7 19.3Z"/>
+      </g>
     </svg>
   `);
   return `data:image/svg+xml;charset=utf-8,${encoded}`;
@@ -211,6 +236,9 @@ const RoadsideMap = forwardRef<WebMapViewRef, MapViewProps>(function RoadsideMap
       title?: string;
       description?: string;
       pinColor?: string;
+      isCustomer?: boolean;
+      isSelected?: boolean;
+      isAvailable?: boolean;
       onPress?: () => void;
     }[] = [];
 
@@ -220,11 +248,20 @@ const RoadsideMap = forwardRef<WebMapViewRef, MapViewProps>(function RoadsideMap
       if (React.isValidElement(child) && child.props) {
         const p = child.props as any;
         if (p.coordinate) {
+          const isCustomer =
+            p.title === 'Your Location' ||
+            p.isCustomer === true ||
+            (p.children?.type?.name === 'CustomerMarkerView');
+          const isSelected = p.isSelected === true;
+          const isAvailable = p.isAvailable !== false;
           extractedMarkers.push({
             coordinate: p.coordinate,
             title: p.title,
             description: p.description,
             pinColor: p.pinColor,
+            isCustomer,
+            isSelected,
+            isAvailable,
             onPress: p.onPress,
           });
         } else if (p.center && p.radius != null) {
@@ -256,15 +293,32 @@ const RoadsideMap = forwardRef<WebMapViewRef, MapViewProps>(function RoadsideMap
         typeof item.coordinate.latitude === 'number' &&
         typeof item.coordinate.longitude === 'number'
       ) {
-        const pinColor = item.pinColor || '#38B8E8';
+        let iconUrl: string;
+        let iconSize: any;
+        let iconAnchor: any;
+
+        if (item.isCustomer) {
+          iconUrl = createCustomerPointerSvg();
+          iconSize = new window.google.maps.Size(36, 36);
+          iconAnchor = new window.google.maps.Point(18, 18);
+        } else {
+          const color = !item.isAvailable ? '#94A3B8' : (item.pinColor || '#38B8E8');
+          iconUrl = createMechanicWrenchPinSvg(color, item.isSelected);
+          const w = item.isSelected ? 44 : 36;
+          const h = item.isSelected ? 56 : 48;
+          iconSize = new window.google.maps.Size(w, h);
+          iconAnchor = new window.google.maps.Point(w / 2, h);
+        }
+
         const marker = new window.google.maps.Marker({
           position: { lat: item.coordinate.latitude, lng: item.coordinate.longitude },
           map: mapInstanceRef.current,
           title: item.title,
+          zIndex: item.isSelected ? 999 : item.isCustomer ? 500 : 100,
           icon: {
-            url: createSvgPin(pinColor),
-            scaledSize: new window.google.maps.Size(32, 42),
-            anchor: new window.google.maps.Point(16, 42),
+            url: iconUrl,
+            scaledSize: iconSize,
+            anchor: iconAnchor,
           },
         });
 

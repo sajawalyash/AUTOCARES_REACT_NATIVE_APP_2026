@@ -2,6 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Marker } from '../roadside-map';
 
+export function CustomerMarkerView() {
+  return (
+    <View style={styles.container}>
+      <View style={styles.pulseRing} />
+      <View style={styles.whiteRing}>
+        <View style={styles.innerDot} />
+      </View>
+    </View>
+  );
+}
+
 export type CustomerLocationMarkerProps = {
   coordinate: {
     latitude: number;
@@ -16,10 +27,9 @@ export const CustomerLocationMarker = React.memo(function CustomerLocationMarker
 
   // Freeze bitmap tracking after mounting for Android 60fps performance
   useEffect(() => {
-    setTracksViewChanges(true);
     const timer = setTimeout(() => {
       setTracksViewChanges(false);
-    }, 150);
+    }, 200);
     return () => clearTimeout(timer);
   }, [coordinate.latitude, coordinate.longitude]);
 
@@ -31,12 +41,7 @@ export const CustomerLocationMarker = React.memo(function CustomerLocationMarker
       zIndex={50}
       title="Your Location"
       description="Live GPS Position">
-      <View style={styles.container}>
-        <View style={styles.pulseRing} />
-        <View style={styles.whiteRing}>
-          <View style={styles.innerDot} />
-        </View>
-      </View>
+      <CustomerMarkerView />
     </Marker>
   );
 });

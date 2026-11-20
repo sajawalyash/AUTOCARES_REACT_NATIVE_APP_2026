@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import AdminSupportCard from '../../../components/admin-support-card';
@@ -20,6 +20,7 @@ import { getCurrentCoords } from '../../../lib/location';
 import { getMechanicProfile } from '../../../lib/mechanics';
 import { go } from '../../../lib/nav';
 import { acceptRequest, listPendingRequestsForMechanic, rejectRequest } from '../../../lib/requests';
+import { supabase } from '../../../lib/supabase';
 import type { ServiceRequest } from '../../../lib/types';
 import { vehicleLabel } from '../../../lib/types';
 import { normalizePhoneNumber } from '../../../lib/whatsapp';
@@ -57,6 +58,28 @@ export default function IncomingRequests() {
       load();
     }, [load])
   );
+
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`mechanic-requests-live:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'service_requests',
+        },
+        () => {
+          load();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [load, user]);
 
   async function onAccept(item: ServiceRequest) {
     if (!user) return;

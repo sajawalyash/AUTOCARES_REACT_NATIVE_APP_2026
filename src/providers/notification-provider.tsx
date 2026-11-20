@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import {
   createContext,
@@ -27,6 +28,10 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
 } from '../lib/notifications';
+import {
+  registerForPushNotificationsAsync,
+  setupMechanicNotificationChannel,
+} from '../lib/push-notifications';
 import { supabase } from '../lib/supabase';
 import type { AppNotification } from '../lib/types';
 import { useAuth } from './auth-provider';
@@ -56,6 +61,10 @@ export function NotificationProvider({ children }: PropsWithChildren) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [toastNotification, setToastNotification] = useState<AppNotification | null>(null);
+
+  // Deduplication sets to prevent double-alerting between push & realtime
+  const handledNotificationIds = useRef(new Set<string>());
+  const handledRequestIds = useRef(new Set<string>());
 
   // Animated toast values
   const [translateY] = useState(() => new Animated.Value(-120));
@@ -133,6 +142,57 @@ export function NotificationProvider({ children }: PropsWithChildren) {
     }
   }, [user]);
 
+  // Register push token for authenticated user and configure Android channels
+  useEffect(() => {
+    if (!user) return;
+    setupMechanicNotificationChannel();
+    registerForPushNotificationsAsync(user.id);
+  }, [user]);
+
+  // Handle incoming push notification taps (background / lockscreen / heads-up tap)
+  useEffect(() => {
+    const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as Record<string, any> | undefined;
+      const requestId = data?.requestId;
+
+      if (requestId) {
+        if (role === 'mechanic') {
+          router.push('/(mechanic)/(tabs)/requests');
+        } else {
+          router.push(`/(customer)/tracking/${requestId}` as any);
+        }
+      } else {
+        if (role === 'mechanic') {
+          router.push('/(mechanic)/notifications');
+        } else {
+          router.push('/(customer)/notifications');
+        }
+      }
+    });
+
+    const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
+      const data = notification.request.content.data as Record<string, any> | undefined;
+      const notifId = notification.request.identifier;
+      const requestId = data?.requestId;
+
+      if (requestId && handledRequestIds.current.has(requestId)) {
+        return;
+      }
+      if (notifId && handledNotificationIds.current.has(notifId)) {
+        return;
+      }
+      if (requestId) handledRequestIds.current.add(requestId);
+      if (notifId) handledNotificationIds.current.add(notifId);
+
+      loadNotifications();
+    });
+
+    return () => {
+      responseSub.remove();
+      receivedSub.remove();
+    };
+  }, [loadNotifications, role]);
+
   // Initial fetch and Realtime Subscription
   useEffect(() => {
     let isMounted = true;
@@ -166,12 +226,23 @@ export function NotificationProvider({ children }: PropsWithChildren) {
           },
           (payload) => {
             const newNotif = payload.new as AppNotification;
+            const reqId = newNotif.data?.requestId;
+
+            if (newNotif.id && handledNotificationIds.current.has(newNotif.id)) {
+              return;
+            }
+            if (reqId && handledRequestIds.current.has(reqId)) {
+              return;
+            }
+            if (newNotif.id) handledNotificationIds.current.add(newNotif.id);
+            if (reqId) handledRequestIds.current.add(reqId);
+
             setNotifications((prev) => [newNotif, ...prev.filter((n) => n.id !== newNotif.id)]);
 
             // Trigger vibration feedback
             if (Platform.OS !== 'web') {
               try {
-                Vibration.vibrate(250);
+                Vibration.vibrate([0, 250, 250, 250]);
               } catch {
                 // Ignore if unsupported on current environment
               }
@@ -249,13 +320,24 @@ export function NotificationProvider({ children }: PropsWithChildren) {
   }, [user]);
 
   const handleToastPress = useCallback(() => {
+    const currentToast = toastNotification;
     dismissToast();
+    const requestId = currentToast?.data?.requestId;
+
     if (role === 'mechanic') {
-      router.push('/(mechanic)/notifications');
+      if (requestId) {
+        router.push('/(mechanic)/(tabs)/requests');
+      } else {
+        router.push('/(mechanic)/notifications');
+      }
     } else {
-      router.push('/(customer)/notifications');
+      if (requestId) {
+        router.push(`/(customer)/tracking/${requestId}` as any);
+      } else {
+        router.push('/(customer)/notifications');
+      }
     }
-  }, [dismissToast, role]);
+  }, [dismissToast, role, toastNotification]);
 
   const value = useMemo<NotificationContextValue>(
     () => ({
