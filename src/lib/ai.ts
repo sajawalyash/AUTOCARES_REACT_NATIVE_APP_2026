@@ -184,6 +184,141 @@ export function extractVehiclePart(text: string): string {
 /**
  * Main AI guidance function with multi-layer domain protection.
  */
+
+/**
+ * Intelligently detects the vehicle type from user message text.
+ */
+export function detectVehicleType(text: string): VehicleType | null {
+  const lower = text.toLowerCase();
+  if (
+    /\b(bike|motorcycle|motorbike|two\s*wheeler|pulsar|yamaha|honda\s*(125|70|cd|cg)?|cd\s*70|cg\s*125|125cc|70cc|kick\s*start|chain\s*sprocket)\b/i.test(
+      lower
+    )
+  ) {
+    return 'Bike';
+  }
+  if (/\b(scooter|scooty|vespa|activa)\b/i.test(lower)) {
+    return 'Scooter';
+  }
+  if (/\b(van|hiace|bolan|wagon|carry|minivan)\b/i.test(lower)) {
+    return 'Van';
+  }
+  if (
+    /\b(car|sedan|suv|hatchback|mehran|corolla|civic|alto|cultus|yaris|city|coupe)\b/i.test(
+      lower
+    )
+  ) {
+    return 'Car';
+  }
+  return null;
+}
+
+/**
+ * Direct Gemini API vehicle breakdown assistant.
+ * Powered by Google Gemini 2.5 Flash with strict automotive domain enforcement.
+ */
+export async function callGeminiApi(input: {
+  messages: AssistantMessage[];
+  vehicle: VehicleContext;
+  problemType: string;
+  diagnostics?: ObdContext | null;
+}): Promise<AiGuidance | null> {
+  const geminiApiKey =
+    process.env.EXPO_PUBLIC_GEMINI_API_KEY ||
+    process.env.GEMINI_API_KEY ||
+    '';
+
+  if (!geminiApiKey) {
+    return null;
+  }
+
+  const vType = input.vehicle.vehicle_type;
+  const vehicleDesc = `${input.vehicle.year ? input.vehicle.year + ' ' : ''}${
+    input.vehicle.make || ''
+  } ${input.vehicle.model || vType}`.trim();
+
+  const systemPrompt = [
+    'You are AutoCares AI, a professional roadside vehicle breakdown and automotive diagnostic assistant for the AutoCares roadside mobile app.',
+    'You are NOT a general-purpose chatbot.',
+    'STRICT DOMAIN RESTRICTION: You MUST ONLY assist with vehicle breakdowns, engine troubles, car/bike/motorcycle/scooter/van problems, starting failures, battery dead/charging issues, overheating, flat tires/punctures, brakes, electrical faults, transmissions/gears, dashboard warning lights, fuel issues, and roadside safety or requesting a mechanic.',
+    'If the user asks ANY question unrelated to vehicle breakdowns or automotive troubleshooting (such as math, coding, poetry, jokes, politics, general knowledge, news, sports, recipes, dating, homework, etc.), you MUST return JSON with summary set to EXACTLY:',
+    `"${STRICT_RESTRICTION_MESSAGE}"`,
+    'with possible_causes: [], next_steps: [], urgency: "low", safety_note: "", follow_up_question: null, recommend_mechanic: false.',
+    'VEHICLE CONTEXT ACCURACY: Pay close attention to the specific vehicle type. If the vehicle is a Bike or Motorcycle, diagnose motorcycle-specific components (e.g. handlebar engine kill switch, fuel petcock valve, spark plug boot, kickstarter / 12V bike battery, side-stand safety switch, clutch lever, CDI/ignition coil). NEVER refer to a Bike or Motorcycle as a Car or mention Car-only parts.',
+    'FORMAT: You MUST return a single valid JSON object with the following keys:',
+    '- summary (string: concise 1-3 sentence breakdown diagnosis, specifically addressing the exact vehicle type: Car, Bike, Scooter, or Van)',
+    '- possible_causes (string[]: array of 3-5 specific, bulleted mechanical causes)',
+    '- next_steps (string[]: array of 3-5 actionable, safe roadside troubleshooting steps)',
+    '- urgency ("low" | "medium" | "high")',
+    '- safety_note (string: crucial roadside safety warning for the driver/rider)',
+    '- follow_up_question (string or null: single clarifying question or null)',
+    '- recommend_mechanic (boolean: true if physical mechanic inspection or towing is recommended)',
+  ].join(' ');
+
+  const contents = input.messages.map((m) => ({
+    role: m.role,
+    parts: [{ text: m.text }],
+  }));
+
+  const contextHeader = [
+    `Vehicle: ${input.vehicle.vehicle_type} (${vehicleDesc})`,
+    `Selected problem category: ${input.problemType}`,
+    input.diagnostics
+      ? `OBD-II readings: ${JSON.stringify(input.diagnostics)}`
+      : 'No OBD-II readings available.',
+  ].join('\n');
+
+  contents.unshift({ role: 'user', parts: [{ text: contextHeader }] });
+  contents.splice(1, 0, {
+    role: 'model',
+    parts: [
+      {
+        text: `I understand. I am AutoCares AI and will provide specific roadside mechanical troubleshooting for your ${input.vehicle.vehicle_type}.`,
+      },
+    ],
+  });
+
+  const models = ['gemini-2.5-flash', 'gemini-flash-latest'];
+
+  for (const model of models) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+          model
+        )}:generateContent?key=${encodeURIComponent(geminiApiKey)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+            contents,
+            generationConfig: {
+              temperature: 0.15,
+              responseMimeType: 'application/json',
+              maxOutputTokens: 1000,
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      if (!rawText) continue;
+
+      const parsed = JSON.parse(rawText);
+      if (isAiGuidance(parsed)) {
+        return parsed;
+      }
+    } catch {
+      // Try next model
+    }
+  }
+
+  return null;
+}
+
 export async function getVehicleGuidance(input: {
   messages: AssistantMessage[];
   vehicle: VehicleContext;
@@ -192,7 +327,8 @@ export async function getVehicleGuidance(input: {
 }): Promise<{ guidance: AiGuidance | null; error: string | null }> {
   const latestMessage = input.messages[input.messages.length - 1];
   const history = input.messages.slice(0, -1);
-  const classification = classifyAssistantQuery(latestMessage?.text || '', history);
+  const userText = latestMessage?.text || '';
+  const classification = classifyAssistantQuery(userText, history);
 
   // Layer 1: Client-side domain restriction enforcement
   if (classification.type === 'unrelated') {
@@ -210,8 +346,22 @@ export async function getVehicleGuidance(input: {
     };
   }
 
+  // Detect vehicle type from user message if explicitly stated (e.g. "bike will not start")
+  const detectedType = detectVehicleType(userText);
+  let resolvedVehicle = { ...input.vehicle };
+  if (detectedType && detectedType !== input.vehicle.vehicle_type) {
+    resolvedVehicle.vehicle_type = detectedType;
+    if (!resolvedVehicle.model || resolvedVehicle.model === input.vehicle.vehicle_type) {
+      resolvedVehicle.model = detectedType;
+    }
+  }
+
+  let sanitizedInput = {
+    ...input,
+    vehicle: resolvedVehicle,
+  };
+
   // If mixed query: sanitize latest message to vehicle part only
-  let sanitizedInput = input;
   if (classification.type === 'mixed' && classification.vehiclePart) {
     const updatedMessages = [...input.messages];
     updatedMessages[updatedMessages.length - 1] = {
@@ -219,19 +369,45 @@ export async function getVehicleGuidance(input: {
       text: classification.vehiclePart,
     };
     sanitizedInput = {
-      ...input,
+      ...sanitizedInput,
       messages: updatedMessages,
     };
   }
 
-  // Layer 2: Attempt Supabase Edge Function (Gemini API with secure server-side domain guard)
+  // Layer 2: Direct Gemini API Call (fast, official Gemini 2.5 Flash intelligence)
+  try {
+    const geminiGuidance = await callGeminiApi(sanitizedInput);
+    if (geminiGuidance) {
+      if (
+        geminiGuidance.summary === STRICT_RESTRICTION_MESSAGE ||
+        geminiGuidance.summary.includes('designed specifically to help with vehicle')
+      ) {
+        return {
+          guidance: {
+            summary: STRICT_RESTRICTION_MESSAGE,
+            possible_causes: [],
+            next_steps: [],
+            urgency: 'low',
+            safety_note: '',
+            follow_up_question: null,
+            recommend_mechanic: false,
+          },
+          error: null,
+        };
+      }
+      return { guidance: geminiGuidance, error: null };
+    }
+  } catch {
+    // Continue to next layer
+  }
+
+  // Layer 3: Attempt Supabase Edge Function
   try {
     const { data, error } = await supabase.functions.invoke('vehicle-assistant', {
       body: sanitizedInput,
-      timeout: 12_000,
+      timeout: 10_000,
     });
     if (!error && isAiGuidance(data?.guidance)) {
-      // Validate returned guidance
       if (
         data.guidance.summary === STRICT_RESTRICTION_MESSAGE ||
         data.guidance.summary.includes('designed specifically to help with vehicle')
@@ -255,7 +431,7 @@ export async function getVehicleGuidance(input: {
     // Edge function unreachable; fall through to intelligent local automotive diagnostic engine
   }
 
-  // Layer 3: Intelligent Local Automotive Diagnostic Engine fallback
+  // Layer 4: Intelligent Local Automotive Diagnostic Engine fallback
   try {
     const localGuidance = generateLocalGuidance(sanitizedInput);
     return { guidance: localGuidance, error: null };
@@ -342,7 +518,9 @@ export function generateLocalGuidance(input: {
     .join(' ');
 
   const problem = (input.problemType || '').toLowerCase();
-  const vType = input.vehicle.vehicle_type;
+  const detected = detectVehicleType(userText);
+  const vType = detected || input.vehicle.vehicle_type;
+  const isTwoWheeler = vType === 'Bike' || vType === 'Scooter';
   const vehicleDesc = `${input.vehicle.year ? input.vehicle.year + ' ' : ''}${
     input.vehicle.make || ''
   } ${input.vehicle.model || vType}`.trim();
@@ -415,14 +593,12 @@ export function generateLocalGuidance(input: {
 
   // 2. MOTORCYCLE / BIKE / SCOOTER SPECIFIC
   if (
-    (vType === 'Bike' || vType === 'Scooter') &&
-    (userText.includes('kick') ||
-      userText.includes('chain') ||
-      userText.includes('sprocket') ||
-      userText.includes('stopped while') ||
-      userText.includes('riding') ||
-      userText.includes('scooter') ||
-      userText.includes('bike'))
+    isTwoWheeler ||
+    userText.includes('bike') ||
+    userText.includes('motorcycle') ||
+    userText.includes('scooter') ||
+    userText.includes('kick') ||
+    userText.includes('chain')
   ) {
     return {
       summary: `Two-wheeler roadside issue analyzed for your ${vehicleDesc}. Engine stopped or drive mechanism interrupted during operation.`,
@@ -462,6 +638,33 @@ export function generateLocalGuidance(input: {
     userText.includes('alternator') ||
     userText.includes('dead')
   ) {
+    if (isTwoWheeler) {
+      return {
+        summary: `Starting or ignition fault diagnosed for your ${vType}. The engine is not receiving spark, fuel flow, or starter engagement.`,
+        possible_causes: [
+          'Handlebar engine kill switch is in the "OFF" position',
+          'Fuel petcock valve is closed or fuel level is too low (needs RESERVE)',
+          'Discharged or dead 12V motorcycle battery (starter motor clicks or stays silent)',
+          'Fouled, wet, or loosened spark plug / disconnected spark plug boot',
+          'Side-stand safety switch engaged while motorcycle is in gear',
+          'Faulty ignition CDI coil or blown main fuse',
+        ],
+        next_steps: [
+          'Verify that the red engine kill switch on the right handlebar is switched to "RUN".',
+          'Check the fuel tank petcock: switch lever to "RESERVE" or "ON" position.',
+          'Ensure the side stand is fully kicked up and the clutch lever is pulled in.',
+          'Inspect the rubber spark plug boot under the fuel tank; ensure it is snapped tightly onto the plug.',
+          'If the bike has a kickstarter: switch key to ignition ON, apply choke, and kick firmly.',
+          'If electric start only clicks rapidly: jump-start using a 12V booster or request roadside mechanic.',
+        ],
+        urgency: 'medium',
+        safety_note:
+          'Ensure your motorcycle is securely propped on the center stand on a level surface away from passing traffic before inspecting the spark plug or chain.',
+        follow_up_question:
+          'Does the starter motor click when pressing the start button, or does it have a kickstarter?',
+        recommend_mechanic: true,
+      };
+    }
     return {
       summary: `Starting or electrical power fault diagnosed for your ${vehicleDesc}. The engine is not receiving adequate cranking amperage to turn over.`,
       possible_causes: [

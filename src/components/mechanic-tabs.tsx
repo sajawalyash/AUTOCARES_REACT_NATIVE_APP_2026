@@ -3,9 +3,10 @@ import { Tabs } from 'expo-router';
 import { Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { theme } from '../constants/autocares-theme';
+import { useAppTheme } from '../providers/theme-provider';
 
 export default function MechanicTabs() {
+  const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
 
   // Bottom inset handling:

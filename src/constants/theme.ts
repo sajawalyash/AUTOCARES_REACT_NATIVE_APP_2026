@@ -1,30 +1,30 @@
 import '@/global.css';
 
 import { Platform } from 'react-native';
-import { theme } from './autocares-theme';
+import { darkColors, lightColors, theme } from './autocares-theme';
 
 export const Colors = {
   light: {
-    text: theme.colors.text,
-    background: theme.colors.background,
-    backgroundElement: theme.colors.surfaceSubtle,
-    backgroundSelected: theme.colors.primaryLight,
-    textSecondary: theme.colors.muted,
-    primary: theme.colors.primary,
-    yellow: theme.colors.yellow,
-    orange: theme.colors.orange,
-    border: theme.colors.border,
+    text: lightColors.text,
+    background: lightColors.background,
+    backgroundElement: lightColors.surfaceSubtle,
+    backgroundSelected: lightColors.primaryLight,
+    textSecondary: lightColors.muted,
+    primary: lightColors.primary,
+    yellow: lightColors.yellow,
+    orange: lightColors.orange,
+    border: lightColors.border,
   },
   dark: {
-    text: '#F8FAFC',
-    background: '#0F172A',
-    backgroundElement: '#1E293B',
-    backgroundSelected: '#0369A1',
-    textSecondary: '#94A3B8',
-    primary: theme.colors.primary,
-    yellow: theme.colors.yellow,
-    orange: theme.colors.orange,
-    border: '#334155',
+    text: darkColors.text,
+    background: darkColors.background,
+    backgroundElement: darkColors.surfaceSubtle,
+    backgroundSelected: darkColors.primaryLight,
+    textSecondary: darkColors.muted,
+    primary: darkColors.primary,
+    yellow: darkColors.yellow,
+    orange: darkColors.orange,
+    border: darkColors.border,
   },
 } as const;
 

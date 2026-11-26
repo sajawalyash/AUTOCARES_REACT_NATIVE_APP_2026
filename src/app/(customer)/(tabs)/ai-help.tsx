@@ -23,6 +23,7 @@ import {
 } from '../../../components/ui';
 import { theme } from '../../../constants/autocares-theme';
 import {
+  detectVehicleType,
   getVehicleGuidance,
   STRICT_RESTRICTION_MESSAGE,
   type AiGuidance,
@@ -100,6 +101,38 @@ function AiHelpSession({ diagnosticData }: { diagnosticData?: string }) {
       setError('Enter a valid four-digit vehicle year.');
       return;
     }
+    // Intelligently auto-detect vehicle type from message if stated
+    const autoVehicle = detectVehicleType(trimmed);
+    const activeVehicleType = autoVehicle || vehicleType;
+    if (autoVehicle && autoVehicle !== vehicleType) {
+      setVehicleType(autoVehicle);
+    }
+
+    // Auto-detect problem category if currently generic ('other')
+    let activeProblemType = problemType;
+    if (activeProblemType === 'other') {
+      const lower = trimmed.toLowerCase();
+      if (/\b(start|crank|battery|jump|click|dead)\b/i.test(lower)) {
+        activeProblemType = 'dead_battery';
+        setProblemType('dead_battery');
+      } else if (/\b(t[iy]re|flat|puncture|wheel|blowout)\b/i.test(lower)) {
+        activeProblemType = 'flat_tire';
+        setProblemType('flat_tire');
+      } else if (/\b(overheat|steam|coolant|radiator|temp)\b/i.test(lower)) {
+        activeProblemType = 'overheating';
+        setProblemType('overheating');
+      } else if (/\b(smoke|fire|brake\s*fail|emergency)\b/i.test(lower)) {
+        activeProblemType = 'sos';
+        setProblemType('sos');
+      } else if (/\b(tow|towing|stuck|ditch|winch)\b/i.test(lower)) {
+        activeProblemType = 'towing';
+        setProblemType('towing');
+      } else if (/\b(engine|misfire|knock|sputter|shake)\b/i.test(lower)) {
+        activeProblemType = 'engine_issue';
+        setProblemType('engine_issue');
+      }
+    }
+
     const nextMessages = retry
       ? messages
       : [...messages, { role: 'user' as const, text: trimmed }];
@@ -116,13 +149,13 @@ function AiHelpSession({ diagnosticData }: { diagnosticData?: string }) {
           !(index === 0 && message.role === 'model' && recent.length > 1)
         ),
         vehicle: {
-          vehicle_type: vehicleType,
+          vehicle_type: activeVehicleType,
           make: make.trim(),
           model: model.trim(),
           year: year ? Number(year) : null,
           fuel_type: fuelType,
         },
-        problemType,
+        problemType: activeProblemType,
         diagnostics,
       });
       if (result.error || !result.guidance) {

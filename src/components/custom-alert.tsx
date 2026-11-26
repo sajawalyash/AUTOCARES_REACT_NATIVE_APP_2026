@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 
 import { theme } from '../constants/autocares-theme';
+import { useAppTheme } from '../providers/theme-provider';
 
 export type AlertType =
   | 'success'
@@ -374,6 +375,7 @@ customAlert.whatsapp = (options?: {
  * Must be mounted once in the root layout (_layout.tsx).
  */
 export function CustomAlertModal() {
+  const { isDark, theme: appTheme } = useAppTheme();
   const [alert, setAlert] = useState<CustomAlertOptions | null>(null);
   const [scale] = useState(() => new Animated.Value(0.88));
   const [opacity] = useState(() => new Animated.Value(0));
@@ -621,7 +623,14 @@ export function CustomAlertModal() {
               transform: [{ scale }, { translateY }],
             },
           ]}>
-          <View style={styles.card}>
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: appTheme.colors.surface,
+                borderColor: isDark ? appTheme.colors.border : '#E2E8F0',
+              },
+            ]}>
             {/* Top Accent Strip */}
             <View style={[styles.topAccentBar, { backgroundColor: typeConfig.color }]} />
 
@@ -658,24 +667,47 @@ export function CustomAlertModal() {
             </View>
 
             {/* Title & Subtitle */}
-            <Text style={styles.title}>{alert.title}</Text>
+            <Text style={[styles.title, { color: appTheme.colors.text }]}>{alert.title}</Text>
             {alert.subtitle ? <Text style={styles.subtitle}>{alert.subtitle}</Text> : null}
 
             {/* Message Description */}
-            {alert.message ? <Text style={styles.message}>{alert.message}</Text> : null}
+            {alert.message ? (
+              <Text style={[styles.message, { color: isDark ? '#94A3B8' : '#475569' }]}>
+                {alert.message}
+              </Text>
+            ) : null}
 
             {/* WhatsApp Helpline Info Card */}
             {type === 'whatsapp' && (
-              <View style={styles.whatsappCard}>
+              <View
+                style={[
+                  styles.whatsappCard,
+                  isDark && {
+                    backgroundColor: '#064E3B26',
+                    borderColor: '#065F46',
+                  },
+                ]}>
                 <View style={styles.whatsappCardRow}>
-                  <View style={styles.whatsappCardIcon}>
-                    <Ionicons name="call" size={16} color="#16A34A" />
+                  <View
+                    style={[
+                      styles.whatsappCardIcon,
+                      isDark && { backgroundColor: '#064E3B' },
+                    ]}>
+                    <Ionicons name="call" size={16} color={isDark ? '#4ADE80' : '#16A34A'} />
                   </View>
                   <View style={styles.whatsappCardDetails}>
-                    <Text style={styles.whatsappCardPhone}>
+                    <Text
+                      style={[
+                        styles.whatsappCardPhone,
+                        isDark && { color: '#4ADE80' },
+                      ]}>
                       {alert.displayNumber ?? '0339 0892660'}
                     </Text>
-                    <Text style={styles.whatsappCardLabel}>
+                    <Text
+                      style={[
+                        styles.whatsappCardLabel,
+                        isDark && { color: '#A7F3D0' },
+                      ]}>
                       Official AutoCares 24/7 Roadside Control Room
                     </Text>
                   </View>
@@ -687,7 +719,9 @@ export function CustomAlertModal() {
             {type === 'loading' && (
               <View style={styles.loadingBox}>
                 <ActivityIndicator size="large" color="#38B8E8" />
-                <Text style={styles.loadingSub}>Please wait a moment...</Text>
+                <Text style={[styles.loadingSub, isDark && { color: '#94A3B8' }]}>
+                  Please wait a moment...
+                </Text>
               </View>
             )}
 
@@ -712,9 +746,9 @@ export function CustomAlertModal() {
                   let btnBorderColor = 'transparent';
 
                   if (isCancel) {
-                    btnBg = '#F1F5F9';
-                    btnTextColor = '#334155';
-                    btnBorderColor = '#E2E8F0';
+                    btnBg = isDark ? '#1E293B' : '#F1F5F9';
+                    btnTextColor = isDark ? '#E2E8F0' : '#334155';
+                    btnBorderColor = isDark ? '#334155' : '#E2E8F0';
                   } else if (isDestruct) {
                     btnBg = '#DC2626';
                     btnTextColor = '#FFFFFF';

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from './avatar';
 import { theme } from '../constants/autocares-theme';
+import { useAppTheme } from '../providers/theme-provider';
 import {
   callParticipant,
   getShortRequestRef,
@@ -42,6 +43,7 @@ export default function WhatsAppContactCard({
   status,
   compact = false,
 }: WhatsAppContactCardProps) {
+  const { isDark, theme: appTheme } = useAppTheme();
   const isCustomer = role === 'customer';
   const targetLabel = participantName
     ? participantName
@@ -83,7 +85,14 @@ export default function WhatsAppContactCard({
 
   if (compact) {
     return (
-      <View style={styles.compactContainer}>
+      <View
+        style={[
+          styles.compactContainer,
+          {
+            backgroundColor: isDark ? appTheme.colors.surface : '#F8FAFC',
+            borderColor: isDark ? appTheme.colors.border : '#E2E8F0',
+          },
+        ]}>
         {/* Header Block */}
         <View style={styles.compactHeaderRow}>
           <View style={styles.compactNameBlock}>
@@ -100,7 +109,7 @@ export default function WhatsAppContactCard({
             )}
             <View style={{ flex: 1, marginLeft: 9 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.compactLabel}>
+                <Text style={[styles.compactLabel, { color: appTheme.colors.muted }]}>
                   {isCustomer ? 'Assigned Mechanic' : 'Customer'}
                 </Text>
                 {workshopName ? (
@@ -109,21 +118,21 @@ export default function WhatsAppContactCard({
                   </Text>
                 ) : null}
               </View>
-              <Text style={styles.compactName} numberOfLines={1}>
+              <Text style={[styles.compactName, { color: appTheme.colors.text }]} numberOfLines={1}>
                 {targetLabel}
               </Text>
-              <Text style={styles.compactPhoneText}>📞 {displayPhone}</Text>
+              <Text style={[styles.compactPhoneText, { color: isDark ? '#94A3B8' : '#0F172A' }]}>📞 {displayPhone}</Text>
             </View>
           </View>
 
-          <View style={styles.refPill}>
-            <Text style={styles.refPillText}>{requestRef}</Text>
+          <View style={[styles.refPill, isDark && { backgroundColor: appTheme.colors.surfaceSubtle }]}>
+            <Text style={[styles.refPillText, { color: appTheme.colors.text }]}>{requestRef}</Text>
           </View>
         </View>
 
         {/* Customer Vehicle Tag for Mechanic View */}
         {!isCustomer && (vehicleType || vehicleDetails) && (
-          <View style={styles.compactVehicleRow}>
+          <View style={[styles.compactVehicleRow, isDark && { backgroundColor: '#0C4A6E24', borderColor: '#0369A1' }]}>
             <View style={styles.compactVehicleBadge}>
               <Ionicons
                 name={isTwoWheeler ? 'bicycle' : 'car'}
@@ -135,7 +144,7 @@ export default function WhatsAppContactCard({
               </Text>
             </View>
             {vehicleDetails ? (
-              <Text style={styles.compactVehicleDetailsText} numberOfLines={1}>
+              <Text style={[styles.compactVehicleDetailsText, { color: appTheme.colors.text }]} numberOfLines={1}>
                 {vehicleDetails}
               </Text>
             ) : null}
@@ -156,16 +165,23 @@ export default function WhatsAppContactCard({
 
             <Pressable
               onPress={handleCall}
-              style={({ pressed }) => [styles.callBtn, pressed && styles.btnPressed]}
+              style={({ pressed }) => [
+                styles.callBtn,
+                {
+                  backgroundColor: isDark ? appTheme.colors.surfaceSubtle : '#FFFFFF',
+                  borderColor: isDark ? appTheme.colors.border : '#CBD5E1',
+                },
+                pressed && styles.btnPressed,
+              ]}
               accessibilityRole="button"
               accessibilityLabel={`Call ${targetLabel}`}>
-              <Ionicons name="call" size={14} color="#0F172A" />
-              <Text style={styles.callBtnText}>Call Now</Text>
+              <Ionicons name="call" size={14} color={appTheme.colors.text} />
+              <Text style={[styles.callBtnText, { color: appTheme.colors.text }]}>Call Now</Text>
             </Pressable>
           </View>
         ) : (
-          <View style={styles.awaitingNoticeBox}>
-            <Text style={styles.awaitingNoticeText}>
+          <View style={[styles.awaitingNoticeBox, isDark && { backgroundColor: appTheme.colors.surfaceSubtle }]}>
+            <Text style={[styles.awaitingNoticeText, { color: appTheme.colors.muted }]}>
               Direct contact details unlocked upon request acceptance.
             </Text>
           </View>
@@ -175,7 +191,14 @@ export default function WhatsAppContactCard({
   }
 
   return (
-    <View style={styles.card}>
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: appTheme.colors.surface,
+          borderColor: isDark ? appTheme.colors.border : '#E2E8F0',
+        },
+      ]}>
       {/* Header with Avatar & Details */}
       <View style={styles.cardHeader}>
         {avatarUrl ? (
@@ -192,16 +215,16 @@ export default function WhatsAppContactCard({
 
         <View style={styles.headerInfo}>
           <View style={styles.titleRow}>
-            <Text style={styles.participantName} numberOfLines={1}>
+            <Text style={[styles.participantName, { color: appTheme.colors.text }]} numberOfLines={1}>
               {targetLabel}
             </Text>
-            <View style={styles.refPill}>
-              <Text style={styles.refPillText}>{requestRef}</Text>
+            <View style={[styles.refPill, isDark && { backgroundColor: appTheme.colors.surfaceSubtle }]}>
+              <Text style={[styles.refPillText, { color: appTheme.colors.text }]}>{requestRef}</Text>
             </View>
           </View>
 
           {/* Subtitle / Workshop / Role */}
-          <Text style={styles.roleSubtext}>
+          <Text style={[styles.roleSubtext, { color: appTheme.colors.muted }]}>
             {isCustomer
               ? workshopName
                 ? `${workshopName} · AutoCares Mechanic`
@@ -211,14 +234,21 @@ export default function WhatsAppContactCard({
           </Text>
 
           {/* Phone Display */}
-          <Text style={styles.phoneRowText}>
-            📞 Contact: <Text style={styles.phoneRowNumber}>{displayPhone}</Text>
+          <Text style={[styles.phoneRowText, { color: isDark ? '#94A3B8' : '#334155' }]}>
+            📞 Contact: <Text style={[styles.phoneRowNumber, { color: appTheme.colors.text }]}>{displayPhone}</Text>
           </Text>
         </View>
       </View>
 
       {/* Extra Details Context Section */}
-      <View style={styles.detailsSection}>
+      <View
+        style={[
+          styles.detailsSection,
+          {
+            backgroundColor: isDark ? appTheme.colors.surfaceSubtle : '#F8FAFC',
+            borderColor: isDark ? appTheme.colors.border : '#F1F5F9',
+          },
+        ]}>
         {/* For Mechanic viewing Customer: Prominent Vehicle & Location Details */}
         {!isCustomer && (
           <>
@@ -276,11 +306,18 @@ export default function WhatsAppContactCard({
 
           <Pressable
             onPress={handleCall}
-            style={({ pressed }) => [styles.fullCallBtn, pressed && styles.btnPressed]}
+            style={({ pressed }) => [
+              styles.fullCallBtn,
+              {
+                backgroundColor: isDark ? appTheme.colors.surfaceSubtle : '#F1F5F9',
+                borderColor: isDark ? appTheme.colors.border : '#CBD5E1',
+              },
+              pressed && styles.btnPressed,
+            ]}
             accessibilityRole="button"
             accessibilityLabel={`Call ${targetLabel}`}>
-            <Ionicons name="call" size={17} color="#0F172A" />
-            <Text style={styles.fullCallBtnText}>Call Customer</Text>
+            <Ionicons name="call" size={17} color={appTheme.colors.text} />
+            <Text style={[styles.fullCallBtnText, { color: appTheme.colors.text }]}>Call Customer</Text>
           </Pressable>
         </View>
       ) : (

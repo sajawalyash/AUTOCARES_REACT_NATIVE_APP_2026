@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { theme } from '../constants/autocares-theme';
+import { useAppTheme } from '../providers/theme-provider';
 
 interface AdminSubscreenHeaderProps {
   title: string;
@@ -20,6 +21,8 @@ export default function AdminSubscreenHeader({
   backLabel = 'Tools',
   onBack,
 }: AdminSubscreenHeaderProps) {
+  const { theme: appTheme } = useAppTheme();
+
   function handleBack() {
     if (onBack) {
       onBack();
@@ -37,19 +40,26 @@ export default function AdminSubscreenHeader({
       <View style={styles.topRow}>
         <Pressable
           onPress={handleBack}
-          style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.backButton,
+            {
+              backgroundColor: appTheme.colors.surface,
+              borderColor: appTheme.colors.border,
+            },
+            pressed && styles.pressed,
+          ]}
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel={`Back to ${backLabel}`}>
-          <Ionicons name="arrow-back" size={20} color={theme.colors.primary} />
-          <Text style={styles.backText}>{backLabel}</Text>
+          <Ionicons name="arrow-back" size={20} color={appTheme.colors.primary} />
+          <Text style={[styles.backText, { color: appTheme.colors.text }]}>{backLabel}</Text>
         </Pressable>
 
         {rightAction ? <View style={styles.rightAction}>{rightAction}</View> : null}
       </View>
 
-      <Text style={styles.title}>{title}</Text>
-      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      <Text style={[styles.title, { color: appTheme.colors.text }]}>{title}</Text>
+      {subtitle ? <Text style={[styles.subtitle, { color: appTheme.colors.muted }]}>{subtitle}</Text> : null}
     </View>
   );
 }

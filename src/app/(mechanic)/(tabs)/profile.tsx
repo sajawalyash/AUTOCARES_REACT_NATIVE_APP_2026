@@ -15,12 +15,15 @@ import {
 } from '../../../components/ui';
 import { customAlert } from '../../../components/custom-alert';
 import { theme } from '../../../constants/autocares-theme';
+import { ThemeSelector } from '../../../components/theme-selector';
+import { useAppTheme } from '../../../providers/theme-provider';
 import { getCurrentCoords } from '../../../lib/location';
 import { updateProfile } from '../../../lib/profiles';
 import { getMechanicProfile, updateMechanicProfile } from '../../../lib/mechanics';
 import { useAuth } from '../../../providers/auth-provider';
 
 export default function MechanicProfileScreen() {
+  const { theme } = useAppTheme();
   const { user, profile, signOut, refreshProfile } = useAuth();
 
   async function handleAvatarPicked(uri: string) {
@@ -187,6 +190,9 @@ export default function MechanicProfileScreen() {
             disabled={saving}
           />
         </Card>
+
+        <ThemeSelector />
+
 
         <OutlineButton
           label="Reviews & Performance"

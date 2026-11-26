@@ -3,13 +3,16 @@ import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import AdminSubscreenHeader from '@/components/admin-subscreen-header';
+import { ThemeSelector } from '@/components/theme-selector';
 import { Card, Screen } from '@/components/ui';
 import { customAlert } from '../../components/custom-alert';
 import { theme } from '@/constants/autocares-theme';
 import { useAuth } from '@/providers/auth-provider';
+import { useAppTheme } from '@/providers/theme-provider';
 
 export default function AdminProfile() {
   const { user, profile, signOut } = useAuth();
+  const { theme: appTheme, isDark } = useAppTheme();
 
   function handleSignOut() {
     customAlert.confirm(
@@ -48,76 +51,101 @@ export default function AdminProfile() {
 
           <View style={styles.profileInfo}>
             <View style={styles.nameRow}>
-              <Text style={styles.nameText}>{profile?.full_name || 'System Administrator'}</Text>
-              <View style={styles.roleBadge}>
-                <Ionicons name="shield-checkmark" size={12} color="#15803D" />
-                <Text style={styles.roleBadgeText}>ADMIN</Text>
+              <Text style={[styles.nameText, { color: appTheme.colors.text }]}>
+                {profile?.full_name || 'System Administrator'}
+              </Text>
+              <View style={[styles.roleBadge, isDark && { backgroundColor: '#064E3B33', borderColor: '#065F46' }]}>
+                <Ionicons name="shield-checkmark" size={12} color={isDark ? '#4ADE80' : '#15803D'} />
+                <Text style={[styles.roleBadgeText, isDark && { color: '#4ADE80' }]}>ADMIN</Text>
               </View>
             </View>
-            <Text style={styles.emailText}>{user?.email || 'admin@autocares.com'}</Text>
-            <Text style={styles.metaText}>User ID: {user?.id?.slice(0, 16)}…</Text>
+            <Text style={[styles.emailText, { color: appTheme.colors.muted }]}>{user?.email || 'admin@autocares.com'}</Text>
+            <Text style={[styles.metaText, { color: appTheme.colors.muted }]}>User ID: {user?.id?.slice(0, 16)}…</Text>
           </View>
         </Card>
 
-        <Text style={styles.sectionTitle}>Platform Navigation</Text>
+        {/* Theme Preference */}
+        <ThemeSelector />
+
+        <Text style={[styles.sectionTitle, { color: appTheme.colors.muted }]}>Platform Navigation</Text>
 
         <View style={styles.navGrid}>
           <Pressable
             onPress={() => router.push('/(admin)/(tabs)/users')}
-            style={({ pressed }) => [styles.navCard, pressed && styles.navCardPressed]}>
+            style={({ pressed }) => [
+              styles.navCard,
+              { backgroundColor: appTheme.colors.surface, borderColor: appTheme.colors.border },
+              pressed && { backgroundColor: appTheme.colors.surfaceSubtle },
+            ]}>
             <View style={styles.navIconBox}>
-              <Ionicons name="people-outline" size={20} color={theme.colors.primary} />
+              <Ionicons name="people-outline" size={20} color={appTheme.colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.navTitle}>User Management</Text>
-              <Text style={styles.navDesc}>Inspect all accounts and roles</Text>
+              <Text style={[styles.navTitle, { color: appTheme.colors.text }]}>User Management</Text>
+              <Text style={[styles.navDesc, { color: appTheme.colors.muted }]}>Inspect all accounts and roles</Text>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.muted} />
+            <Ionicons name="chevron-forward" size={16} color={appTheme.colors.muted} />
           </Pressable>
 
           <Pressable
             onPress={() => router.push('/(admin)/(tabs)/verify')}
-            style={({ pressed }) => [styles.navCard, pressed && styles.navCardPressed]}>
+            style={({ pressed }) => [
+              styles.navCard,
+              { backgroundColor: appTheme.colors.surface, borderColor: appTheme.colors.border },
+              pressed && { backgroundColor: appTheme.colors.surfaceSubtle },
+            ]}>
             <View style={styles.navIconBox}>
-              <Ionicons name="shield-checkmark-outline" size={20} color={theme.colors.primary} />
+              <Ionicons name="shield-checkmark-outline" size={20} color={appTheme.colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.navTitle}>Verification Queue</Text>
-              <Text style={styles.navDesc}>Approve or reject mechanics</Text>
+              <Text style={[styles.navTitle, { color: appTheme.colors.text }]}>Verification Queue</Text>
+              <Text style={[styles.navDesc, { color: appTheme.colors.muted }]}>Approve or reject mechanics</Text>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.muted} />
+            <Ionicons name="chevron-forward" size={16} color={appTheme.colors.muted} />
           </Pressable>
 
           <Pressable
             onPress={() => router.push('/(admin)/(tabs)/oversight')}
-            style={({ pressed }) => [styles.navCard, pressed && styles.navCardPressed]}>
+            style={({ pressed }) => [
+              styles.navCard,
+              { backgroundColor: appTheme.colors.surface, borderColor: appTheme.colors.border },
+              pressed && { backgroundColor: appTheme.colors.surfaceSubtle },
+            ]}>
             <View style={styles.navIconBox}>
-              <Ionicons name="list-outline" size={20} color={theme.colors.primary} />
+              <Ionicons name="list-outline" size={20} color={appTheme.colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.navTitle}>Service Oversight</Text>
-              <Text style={styles.navDesc}>Live requests and status tracking</Text>
+              <Text style={[styles.navTitle, { color: appTheme.colors.text }]}>Service Oversight</Text>
+              <Text style={[styles.navDesc, { color: appTheme.colors.muted }]}>Live requests and status tracking</Text>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.muted} />
+            <Ionicons name="chevron-forward" size={16} color={appTheme.colors.muted} />
           </Pressable>
 
           <Pressable
             onPress={() => router.push('/(admin)/(tabs)/analytics')}
-            style={({ pressed }) => [styles.navCard, pressed && styles.navCardPressed]}>
+            style={({ pressed }) => [
+              styles.navCard,
+              { backgroundColor: appTheme.colors.surface, borderColor: appTheme.colors.border },
+              pressed && { backgroundColor: appTheme.colors.surfaceSubtle },
+            ]}>
             <View style={styles.navIconBox}>
-              <Ionicons name="bar-chart-outline" size={20} color={theme.colors.primary} />
+              <Ionicons name="bar-chart-outline" size={20} color={appTheme.colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.navTitle}>Analytics & Reports</Text>
-              <Text style={styles.navDesc}>Performance metrics and charts</Text>
+              <Text style={[styles.navTitle, { color: appTheme.colors.text }]}>Analytics & Reports</Text>
+              <Text style={[styles.navDesc, { color: appTheme.colors.muted }]}>Performance metrics and charts</Text>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.muted} />
+            <Ionicons name="chevron-forward" size={16} color={appTheme.colors.muted} />
           </Pressable>
         </View>
 
         <Pressable
           onPress={handleSignOut}
-          style={({ pressed }) => [styles.signOutButton, pressed && { opacity: 0.8 }]}>
+          style={({ pressed }) => [
+            styles.signOutButton,
+            isDark && { backgroundColor: '#450A0A33', borderColor: '#7F1D1D' },
+            pressed && { opacity: 0.8 },
+          ]}>
           <Ionicons name="log-out-outline" size={18} color="#DC2626" />
           <Text style={styles.signOutText}>Sign out of Admin</Text>
         </Pressable>

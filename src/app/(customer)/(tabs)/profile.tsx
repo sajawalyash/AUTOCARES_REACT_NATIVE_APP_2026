@@ -15,10 +15,13 @@ import {
 } from '../../../components/ui';
 import { customAlert } from '../../../components/custom-alert';
 import { theme } from '../../../constants/autocares-theme';
+import { ThemeSelector } from '../../../components/theme-selector';
+import { useAppTheme } from '../../../providers/theme-provider';
 import { updateProfile } from '../../../lib/profiles';
 import { useAuth } from '../../../providers/auth-provider';
 
 export default function CustomerProfile() {
+  const { theme } = useAppTheme();
   const { profile, user, signOut, refreshProfile } = useAuth();
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
   const [phone, setPhone] = useState(profile?.phone ?? '');
@@ -82,8 +85,8 @@ export default function CustomerProfile() {
             onImagePicked={handleAvatarPicked}
           />
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{profile?.full_name || 'Driver'}</Text>
-            <Text style={styles.userEmail}>{user?.email}</Text>
+            <Text style={[styles.userName, { color: theme.colors.text }]}>{profile?.full_name || 'Driver'}</Text>
+            <Text style={[styles.userEmail, { color: theme.colors.muted }]}>{user?.email}</Text>
             <View style={styles.roleBadge}>
               <Text style={styles.roleText}>CUSTOMER</Text>
             </View>
@@ -110,9 +113,12 @@ export default function CustomerProfile() {
           />
         </Card>
 
+        {/* Appearance & Theme */}
+        <ThemeSelector />
+
         {/* Account Shortcuts */}
         <Card style={styles.linksCard}>
-          <Text style={styles.linksTitle}>Quick Shortcuts</Text>
+          <Text style={[styles.linksTitle, { color: theme.colors.text }]}>Quick Shortcuts</Text>
           <OutlineButton label="My Vehicles & Garage" onPress={() => router.push('/(customer)/vehicles')} />
           <OutlineButton label="Notifications & Alerts" onPress={() => router.push('/(customer)/notifications')} />
           <OutlineButton label="OBD-II Bluetooth Diagnostics" onPress={() => router.push('/(customer)/obd-ii')} />

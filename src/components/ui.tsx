@@ -10,26 +10,28 @@ import {
   type TextInputProps,
   type ViewProps,
 } from 'react-native';
-
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { theme } from '../constants/autocares-theme';
+import { theme as defaultTheme } from '../constants/autocares-theme';
+import { useAppTheme } from '../providers/theme-provider';
 
 export interface ScreenProps extends ViewProps {
   safeBottom?: boolean;
 }
 
 export function Screen({ children, style, safeBottom = true, ...rest }: ScreenProps) {
+  const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
   const topPadding = Math.max(insets.top, 16) + 6;
   const bottomPadding = safeBottom ? Math.max(insets.bottom, 16) : 0;
 
   return (
-    <View style={styles.screenWrapper}>
+    <View style={[styles.screenWrapper, { backgroundColor: theme.colors.background }]}>
       <View
         style={[
           styles.screen,
           {
+            backgroundColor: theme.colors.background,
             paddingTop: topPadding,
             paddingBottom: bottomPadding,
           },
@@ -42,31 +44,73 @@ export function Screen({ children, style, safeBottom = true, ...rest }: ScreenPr
   );
 }
 
-export function Title({ children }: { children: ReactNode }) {
-  return <Text style={styles.title}>{children}</Text>;
+export function Title({ children, style }: { children: ReactNode; style?: any }) {
+  const { theme } = useAppTheme();
+  return <Text style={[styles.title, { color: theme.colors.text }, style]}>{children}</Text>;
 }
 
-export function Subtitle({ children }: { children: ReactNode }) {
-  return <Text style={styles.subtitle}>{children}</Text>;
+export function Subtitle({ children, style }: { children: ReactNode; style?: any }) {
+  const { theme } = useAppTheme();
+  return <Text style={[styles.subtitle, { color: theme.colors.muted }, style]}>{children}</Text>;
+}
+
+export function Heading({ children, style }: { children: ReactNode; style?: any }) {
+  const { theme } = useAppTheme();
+  return (
+    <Text
+      style={[
+        {
+          fontSize: theme.typography.heading.fontSize,
+          fontWeight: theme.typography.heading.fontWeight,
+          lineHeight: theme.typography.heading.lineHeight,
+          color: theme.colors.text,
+          marginBottom: 6,
+        },
+        style,
+      ]}>
+      {children}
+    </Text>
+  );
 }
 
 export function Card({ children, style, ...rest }: ViewProps) {
+  const { theme } = useAppTheme();
   return (
-    <View style={[styles.card, style]} {...rest}>
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.border,
+          ...theme.shadows.card,
+        },
+        style,
+      ]}
+      {...rest}>
       {children}
     </View>
   );
 }
 
-export function Label({ children }: { children: string }) {
-  return <Text style={styles.label}>{children}</Text>;
+export function Label({ children, style }: { children: string; style?: any }) {
+  const { theme } = useAppTheme();
+  return <Text style={[styles.label, { color: theme.colors.text }, style]}>{children}</Text>;
 }
 
 export function Field(props: TextInputProps) {
+  const { theme } = useAppTheme();
   return (
     <TextInput
       placeholderTextColor={theme.colors.muted}
-      style={[styles.input, props.style]}
+      style={[
+        styles.input,
+        {
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.border,
+          color: theme.colors.text,
+        },
+        props.style,
+      ]}
       {...props}
     />
   );
@@ -136,6 +180,7 @@ export function OutlineButton({
   children?: ReactNode;
   color?: string;
 }) {
+  const { theme } = useAppTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -143,14 +188,17 @@ export function OutlineButton({
       accessibilityRole="button"
       style={({ pressed }) => [
         styles.outlineButton,
-        color ? { borderColor: color } : null,
+        {
+          backgroundColor: theme.colors.surface,
+          borderColor: color ?? theme.colors.primary,
+        },
         disabled && styles.disabled,
-        pressed && styles.pressedOutline,
+        pressed && { backgroundColor: theme.colors.primaryLight },
       ]}>
       {children ? (
         children
       ) : (
-        <Text style={[styles.outlineText, color ? { color } : null]}>{label}</Text>
+        <Text style={[styles.outlineText, { color: color ?? theme.colors.primary }]}>{label}</Text>
       )}
     </Pressable>
   );
@@ -163,11 +211,12 @@ export function Badge({
   label: string;
   variant?: 'blue' | 'yellow' | 'orange' | 'green' | 'muted';
 }) {
+  const { theme } = useAppTheme();
   const badgeStyles = {
     blue: {
       bg: theme.colors.primaryLight,
-      text: theme.colors.primaryDark,
-      border: '#BAE6FD',
+      text: theme.colors.primary,
+      border: theme.colors.primarySubtle,
     },
     yellow: {
       bg: theme.colors.yellowLight,
@@ -181,8 +230,8 @@ export function Badge({
     },
     green: {
       bg: theme.colors.successLight,
-      text: '#15803D',
-      border: '#BBF7D0',
+      text: theme.colors.success,
+      border: theme.colors.success,
     },
     muted: {
       bg: theme.colors.surfaceSubtle,
@@ -239,32 +288,47 @@ export function StatusBadge({ status }: { status: string }) {
 }
 
 export function LoadingState({ label = 'Loading…' }: { label?: string }) {
+  const { theme } = useAppTheme();
   return (
     <View style={styles.center}>
       <ActivityIndicator size="small" color={theme.colors.primary} />
-      <Text style={styles.mutedText}>{label}</Text>
+      <Text style={[styles.mutedText, { color: theme.colors.muted }]}>{label}</Text>
     </View>
   );
 }
 
 export function EmptyState({ message }: { message: string }) {
+  const { theme } = useAppTheme();
   return (
     <View style={styles.center}>
-      <Text style={styles.mutedText}>{message}</Text>
+      <Text style={[styles.mutedText, { color: theme.colors.muted }]}>{message}</Text>
     </View>
   );
 }
 
 export function ErrorText({ message }: { message: string | null | undefined }) {
+  const { isDark } = useAppTheme();
   if (!message) return null;
   return (
-    <View style={styles.errorBox} accessibilityRole="alert">
-      <View style={styles.errorIconCircle}>
-        <Ionicons name="alert-circle" size={18} color="#DC2626" />
+    <View
+      style={[
+        styles.errorBox,
+        {
+          backgroundColor: isDark ? '#2B1214' : '#FEF2F2',
+          borderColor: isDark ? '#591B1F' : '#FECACA',
+        },
+      ]}
+      accessibilityRole="alert">
+      <View
+        style={[
+          styles.errorIconCircle,
+          { backgroundColor: isDark ? '#4A1519' : '#FEE2E2' },
+        ]}>
+        <Ionicons name="alert-circle" size={18} color="#EF4444" />
       </View>
       <View style={styles.errorContent}>
-        <Text style={styles.errorTitle}>Notice</Text>
-        <Text style={styles.errorText}>{message}</Text>
+        <Text style={[styles.errorTitle, { color: isDark ? '#FCA5A5' : '#991B1B' }]}>Notice</Text>
+        <Text style={[styles.errorText, { color: isDark ? '#F87171' : '#B91C1C' }]}>{message}</Text>
       </View>
     </View>
   );
@@ -273,42 +337,34 @@ export function ErrorText({ message }: { message: string | null | undefined }) {
 const styles = StyleSheet.create({
   screenWrapper: {
     flex: 1,
-    backgroundColor: theme.colors.background,
     width: '100%',
   },
   screen: {
     flex: 1,
-    backgroundColor: theme.colors.background,
     paddingHorizontal: 16,
-    maxWidth: theme.layout.maxContentWidth,
+    maxWidth: defaultTheme.layout.maxContentWidth,
     width: '100%',
     alignSelf: 'center',
   },
   title: {
-    color: theme.colors.text,
-    fontSize: theme.typography.title.fontSize,
-    fontWeight: theme.typography.title.fontWeight,
-    letterSpacing: theme.typography.title.letterSpacing,
-    lineHeight: theme.typography.title.lineHeight,
+    fontSize: defaultTheme.typography.title.fontSize,
+    fontWeight: defaultTheme.typography.title.fontWeight,
+    letterSpacing: defaultTheme.typography.title.letterSpacing,
+    lineHeight: defaultTheme.typography.title.lineHeight,
     marginBottom: 4,
   },
   subtitle: {
-    color: theme.colors.muted,
-    fontSize: theme.typography.subtitle.fontSize,
-    lineHeight: theme.typography.subtitle.lineHeight,
+    fontSize: defaultTheme.typography.subtitle.fontSize,
+    lineHeight: defaultTheme.typography.subtitle.lineHeight,
     marginBottom: 16,
   },
   card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
+    borderRadius: defaultTheme.radius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.border,
     padding: 16,
     marginBottom: 12,
-    ...theme.shadows.card,
   },
   label: {
-    color: theme.colors.text,
     fontWeight: '700',
     fontSize: 13,
     marginBottom: 6,
@@ -317,49 +373,46 @@ const styles = StyleSheet.create({
   input: {
     minHeight: 48,
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.md,
+    borderRadius: defaultTheme.radius.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
     marginBottom: 14,
-    color: theme.colors.text,
     fontSize: 15,
   },
   button: {
-    backgroundColor: theme.colors.primary, // Sky Blue #38B8E8
-    borderRadius: theme.radius.md,
+    backgroundColor: defaultTheme.colors.primary,
+    borderRadius: defaultTheme.radius.md,
     minHeight: 48,
     paddingVertical: 13,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 6,
-    ...theme.shadows.primaryButton,
+    ...defaultTheme.shadows.primaryButton,
   },
   yellowButton: {
-    backgroundColor: theme.colors.yellow, // Yellow #FFD52A
-    ...theme.shadows.yellowButton,
+    backgroundColor: defaultTheme.colors.yellow,
+    ...defaultTheme.shadows.yellowButton,
   },
   orangeButton: {
-    backgroundColor: theme.colors.orange, // Orange #FF9800
-    ...theme.shadows.orangeButton,
+    backgroundColor: defaultTheme.colors.orange,
+    ...defaultTheme.shadows.orangeButton,
   },
   dangerButton: {
-    backgroundColor: theme.colors.dangerLight,
+    backgroundColor: '#FEE2E2',
     borderWidth: 1,
     borderColor: '#FECACA',
     shadowOpacity: 0,
     elevation: 0,
   },
   buttonText: {
-    color: '#FFFFFF', // High-contrast crisp white on Sky Blue
+    color: '#FFFFFF',
     fontWeight: '800',
     fontSize: 15,
     letterSpacing: 0.2,
   },
   yellowText: {
-    color: theme.colors.text, // Slate-900 text for optimal readability on Yellow #FFD52A
+    color: '#0F172A',
     fontWeight: '800',
   },
   orangeText: {
@@ -367,23 +420,20 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   dangerText: {
-    color: theme.colors.danger,
+    color: '#DC2626',
     fontWeight: '800',
   },
   outlineButton: {
     borderWidth: 1.5,
-    borderColor: theme.colors.primary,
-    borderRadius: theme.radius.md,
+    borderRadius: defaultTheme.radius.md,
     minHeight: 46,
     paddingVertical: 12,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
-    backgroundColor: theme.colors.surface,
   },
   outlineText: {
-    color: theme.colors.primaryDark,
     fontWeight: '700',
     fontSize: 14,
   },
@@ -391,7 +441,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: theme.radius.pill,
+    borderRadius: defaultTheme.radius.pill,
     borderWidth: 1,
   },
   badgeText: {
@@ -407,9 +457,6 @@ const styles = StyleSheet.create({
     opacity: 0.88,
     transform: [{ scale: 0.99 }],
   },
-  pressedOutline: {
-    backgroundColor: theme.colors.primaryLight,
-  },
   center: {
     paddingVertical: 36,
     alignItems: 'center',
@@ -417,13 +464,10 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   mutedText: {
-    color: theme.colors.muted,
     textAlign: 'center',
     fontSize: 14,
   },
   errorBox: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FECACA',
     borderWidth: 1.5,
     borderRadius: 14,
     paddingHorizontal: 14,
@@ -432,13 +476,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    ...theme.shadows.card,
   },
   errorIconCircle: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#FEE2E2',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 1,
@@ -447,14 +489,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   errorTitle: {
-    color: '#991B1B',
     fontSize: 12.5,
     fontWeight: '800',
     marginBottom: 2,
     letterSpacing: 0.2,
   },
   errorText: {
-    color: '#B91C1C',
     fontSize: 13,
     fontWeight: '500',
     lineHeight: 18,

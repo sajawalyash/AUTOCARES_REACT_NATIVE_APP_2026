@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Animated, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
 import { theme } from '../constants/autocares-theme';
+import { useAppTheme } from '../providers/theme-provider';
 import {
   AUTOCARES_SUPPORT_CONFIG,
   callAdminHelpline,
@@ -28,6 +29,7 @@ export default function AdminSupportCard({
   subtitle,
   showPhone = false,
 }: AdminSupportCardProps) {
+  const { isDark, theme: appTheme } = useAppTheme();
   const [pulseAnim] = useState(() => new Animated.Value(1));
 
   useEffect(() => {
@@ -59,20 +61,28 @@ export default function AdminSupportCard({
 
   if (compact) {
     return (
-      <View style={[styles.compactCard, style]}>
+      <View
+        style={[
+          styles.compactCard,
+          {
+            backgroundColor: appTheme.colors.surface,
+            borderColor: isDark ? appTheme.colors.border : '#BBF7D0',
+          },
+          style,
+        ]}>
         <View style={styles.compactHeader}>
-          <View style={styles.liveBadge}>
+          <View style={[styles.liveBadge, isDark && { backgroundColor: '#064E3B33', borderColor: '#065F46' }]}>
             <Animated.View style={[styles.liveDot, { opacity: pulseAnim }]} />
-            <Text style={styles.liveBadgeText}>{AUTOCARES_SUPPORT_CONFIG.badge}</Text>
+            <Text style={[styles.liveBadgeText, isDark && { color: '#4ADE80' }]}>{AUTOCARES_SUPPORT_CONFIG.badge}</Text>
           </View>
           <View style={styles.hoursTag}>
-            <Ionicons name="shield-checkmark" size={11} color="#166534" />
-            <Text style={styles.hoursTagText}>Official 24/7</Text>
+            <Ionicons name="shield-checkmark" size={11} color={isDark ? '#4ADE80' : '#166534'} />
+            <Text style={[styles.hoursTagText, isDark && { color: '#4ADE80' }]}>Official 24/7</Text>
           </View>
         </View>
 
         {showPhone && (
-          <Text style={styles.helplinePhoneCompact}>{AUTOCARES_SUPPORT_CONFIG.formatted}</Text>
+          <Text style={[styles.helplinePhoneCompact, isDark && { color: '#4ADE80' }]}>{AUTOCARES_SUPPORT_CONFIG.formatted}</Text>
         )}
 
         <View style={styles.compactButtonsRow}>
@@ -86,12 +96,19 @@ export default function AdminSupportCard({
           </Pressable>
 
           <Pressable
-            style={({ pressed }) => [styles.compactCallBtn, pressed && styles.btnPressed]}
+            style={({ pressed }) => [
+              styles.compactCallBtn,
+              {
+                backgroundColor: isDark ? appTheme.colors.surfaceSubtle : '#F8FAFC',
+                borderColor: isDark ? appTheme.colors.border : '#E2E8F0',
+              },
+              pressed && styles.btnPressed,
+            ]}
             onPress={handleCall}
             accessibilityRole="button"
             accessibilityLabel="Call AutoCares Helpline">
-            <Ionicons name="call" size={13} color="#0F172A" />
-            <Text style={styles.compactCallBtnText}>Call Helpline</Text>
+            <Ionicons name="call" size={13} color={appTheme.colors.text} />
+            <Text style={[styles.compactCallBtnText, { color: appTheme.colors.text }]}>Call Helpline</Text>
           </Pressable>
         </View>
       </View>
@@ -99,32 +116,40 @@ export default function AdminSupportCard({
   }
 
   return (
-    <View style={[styles.card, style]}>
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: appTheme.colors.surface,
+          borderColor: isDark ? appTheme.colors.border : '#BBF7D0',
+        },
+        style,
+      ]}>
       {/* Top Banner Row with 24/7 Status Badge */}
       <View style={styles.topRow}>
-        <View style={styles.liveBadge}>
+        <View style={[styles.liveBadge, isDark && { backgroundColor: '#064E3B33', borderColor: '#065F46' }]}>
           <Animated.View style={[styles.liveDot, { opacity: pulseAnim }]} />
-          <Text style={styles.liveBadgeText}>ADMIN SUPPORT 24/7</Text>
+          <Text style={[styles.liveBadgeText, isDark && { color: '#4ADE80' }]}>ADMIN SUPPORT 24/7</Text>
         </View>
         <View style={styles.hoursTag}>
-          <Ionicons name="shield-checkmark" size={13} color="#166534" />
-          <Text style={styles.hoursTagText}>24/7 Official Helpline</Text>
+          <Ionicons name="shield-checkmark" size={13} color={isDark ? '#4ADE80' : '#166534'} />
+          <Text style={[styles.hoursTagText, isDark && { color: '#4ADE80' }]}>24/7 Official Helpline</Text>
         </View>
       </View>
 
       {/* Main Content Area */}
       <View style={styles.contentRow}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="headset" size={22} color="#15803D" />
+        <View style={[styles.iconContainer, isDark && { backgroundColor: '#064E3B33', borderColor: '#065F46' }]}>
+          <Ionicons name="headset" size={22} color={isDark ? '#4ADE80' : '#15803D'} />
         </View>
         <View style={styles.textContainer}>
-          <Text style={styles.title}>{title ?? 'AutoCares Admin Helpline'}</Text>
+          <Text style={[styles.title, { color: appTheme.colors.text }]}>{title ?? 'AutoCares Admin Helpline'}</Text>
           {showPhone && (
-            <Text style={styles.phoneHighlight}>
+            <Text style={[styles.phoneHighlight, isDark && { color: '#4ADE80' }]}>
               📞 {AUTOCARES_SUPPORT_CONFIG.formatted}
             </Text>
           )}
-          <Text style={styles.message} numberOfLines={3}>
+          <Text style={[styles.message, { color: appTheme.colors.muted }]} numberOfLines={3}>
             {subtitle ?? AUTOCARES_SUPPORT_CONFIG.message}
           </Text>
         </View>
@@ -144,13 +169,20 @@ export default function AdminSupportCard({
         </Pressable>
 
         <Pressable
-          style={({ pressed }) => [styles.callBtn, pressed && styles.btnPressed]}
+          style={({ pressed }) => [
+            styles.callBtn,
+            {
+              backgroundColor: isDark ? appTheme.colors.surfaceSubtle : '#F8FAFC',
+              borderColor: isDark ? appTheme.colors.border : '#E2E8F0',
+            },
+            pressed && styles.btnPressed,
+          ]}
           onPress={handleCall}
           accessibilityRole="button"
           accessibilityLabel="Call AutoCares Helpline">
           <View style={styles.btnContent}>
-            <Ionicons name="call" size={15} color="#0F172A" />
-            <Text style={styles.callBtnText}>Call Helpline</Text>
+            <Ionicons name="call" size={15} color={appTheme.colors.text} />
+            <Text style={[styles.callBtnText, { color: appTheme.colors.text }]}>Call Helpline</Text>
           </View>
         </Pressable>
       </View>
